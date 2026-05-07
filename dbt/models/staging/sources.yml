@@ -1,0 +1,38 @@
+version: 2
+
+sources:
+  - name: jobjarvis
+    database: jobjarvis
+    schema: public
+    description: "Raw JobJarvis PostgreSQL tables"
+
+    tables:
+      - name: jobs
+        description: "All ingested job postings"
+        columns:
+          - name: id
+            tests: [unique, not_null]
+          - name: title
+            tests: [not_null]
+          - name: company_id
+            tests: [not_null]
+
+      - name: companies
+        description: "Company registry"
+        columns:
+          - name: id
+            tests: [unique, not_null]
+          - name: name
+            tests: [unique, not_null]
+
+      - name: job_embeddings
+        description: "Vector embeddings for job postings"
+        columns:
+          - name: job_id
+            tests: [unique, not_null]
+
+      - name: ai_decisions
+        description: "AI fit decisions per user per job"
+
+      - name: applications
+        description: "User job applications"

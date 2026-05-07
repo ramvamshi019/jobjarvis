@@ -1,0 +1,29 @@
+name: 'jobjarvis'
+version: '1.0.0'
+config-version: 2
+
+profile: 'jobjarvis'
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  jobjarvis:
+    staging:
+      +schema: staging
+      +materialized: view
+    marts:
+      +schema: marts
+      +materialized: table
+    metrics:
+      +schema: metrics
+      +materialized: table

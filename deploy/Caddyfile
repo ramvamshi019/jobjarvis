@@ -1,0 +1,49 @@
+# Caddy reverse proxy — auto-HTTPS via Let's Encrypt.
+#
+# {$DOMAIN} is read from the env var passed by docker-compose.
+# Caddy automatically provisions and renews a TLS cert for that domain.
+#
+# Routing:
+#   /api/*  → FastAPI backend container (port 8000)
+#   /*      → Next.js frontend container (port 3000)
+#
+# Add an A record in your DNS pointing $DOMAIN → your VM's external IP
+# BEFORE bringing this up, otherwise Let's Encrypt validation will fail.
+
+{$DOMAIN} {
+    encode zstd gzip
+
+    # Backend API
+    @api path /api/* /docs /openapi.json /redoc
+    handle @api {
+        reverse_proxy backend:8000
+    }
+
+    # Frontend (Next.js, catches everything else)
+    handle {
+        reverse_proxy frontend:3000
+    }
+
+    # Sensible request size limit (resume upload max ~10MB)
+    request_body {
+        max_size 10MB
+    }
+
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options    "nosniff"
+        X-Frame-Options           "SAMEORIGIN"
+        Referrer-Policy           "strict-origin-when-cross-origin"
+        -Server
+    }
+
+    # Access log
+    log {
+        output file /data/access.log {
+            roll_size 10mb
+            roll_keep 5
+        }
+        format json
+    }
+}

@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #0f0f14;
+  --surface: #1a1a24;
+  --surface2: #22223a;
+  --border: #2e2e4a;
+  --text: #e2e2f0;
+  --muted: #8888aa;
+}
+
+body { background: var(--background); color: var(--text); }
+
+.card { @apply bg-[#1a1a24] border border-[#2e2e4a] rounded-xl p-5; }
+.badge-apply { @apply bg-emerald-500/20 text-emerald-400 text-xs font-bold px-2 py-0.5 rounded-full; }
+.badge-tailor { @apply bg-amber-500/20 text-amber-400 text-xs font-bold px-2 py-0.5 rounded-full; }
+.badge-save { @apply bg-blue-500/20 text-blue-400 text-xs font-bold px-2 py-0.5 rounded-full; }
+.badge-skip { @apply bg-gray-500/20 text-gray-400 text-xs font-bold px-2 py-0.5 rounded-full; }
+.badge-risk { @apply bg-red-500/20 text-red-400 text-xs font-bold px-2 py-0.5 rounded-full; }
+.badge-review { @apply bg-violet-500/20 text-violet-400 text-xs font-bold px-2 py-0.5 rounded-full; }

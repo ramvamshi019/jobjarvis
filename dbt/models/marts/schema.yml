@@ -1,0 +1,51 @@
+version: 2
+
+models:
+  - name: mart_job_skills_demand
+    description: "Skill demand aggregates by role, country, and time window"
+    columns:
+      - name: skill_demand_key
+        tests: [unique, not_null]
+      - name: skill
+        tests: [not_null]
+      - name: role_category
+        tests: [not_null]
+      - name: jobs_requiring_30d
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 1
+
+  - name: mart_hiring_trends
+    description: "Daily job posting volume by role, ATS, country"
+    columns:
+      - name: trend_key
+        tests: [unique, not_null]
+      - name: posting_date
+        tests: [not_null]
+      - name: jobs_posted
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+
+  - name: mart_salary_insights
+    description: "Salary benchmarks by role, experience, and country"
+    columns:
+      - name: salary_key
+        tests: [unique, not_null]
+      - name: sample_size
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 3
+      - name: p50_median
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 10000
+              max_value: 2000000
+
+  - name: mart_company_health
+    description: "Per-company hiring activity and health metrics"
+    columns:
+      - name: company_health_key
+        tests: [unique, not_null]
+      - name: company_id
+        tests: [unique, not_null]

@@ -1,0 +1,176 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  JobJarvis – PRODUCTION compose (single-VM deployment)
+#
+#  Differences vs. dev compose:
+#    • postgres + redis ports are NOT exposed to the host
+#    • backend + frontend are NOT exposed; Caddy proxies them
+#    • Caddy in front handles HTTPS via Let's Encrypt
+#    • restart: always (survives reboots)
+#    • all secrets read from .env (no hardcoded passwords)
+#
+#  Deploy with:  docker compose -f deploy/docker-compose.prod.yml up -d --build
+# ─────────────────────────────────────────────────────────────────────────────
+
+x-backend-env: &backend-env
+  DATABASE_URL: postgresql+asyncpg://jobjarvis:${POSTGRES_PASSWORD}@postgres:5432/jobjarvis
+  REDIS_URL:           redis://redis:6379/0
+  CELERY_BROKER_URL:   redis://redis:6379/1
+  CELERY_RESULT_BACKEND: redis://redis:6379/2
+  SECRET_KEY: ${SECRET_KEY}
+  ALGORITHM: HS256
+  ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
+  OPENAI_API_KEY:    ${OPENAI_API_KEY:-}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  AI_DAILY_BUDGET_USD: ${AI_DAILY_BUDGET_USD:-2.0}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  ENVIRONMENT: production
+  EMBEDDING_BACKEND: sentence_transformers
+  ST_MODEL: all-MiniLM-L6-v2
+  VECTOR_DIMENSIONS: "384"
+  ML_MODEL_PATH: /app/data/models
+  HF_HOME: /app/data/hf_cache
+  SENTENCE_TRANSFORMERS_HOME: /app/data/st_cache
+
+services:
+
+  # ── PostgreSQL + pgvector (NOT exposed to host) ─────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: jj_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: jobjarvis
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: jobjarvis
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobjarvis -d jobjarvis"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── Redis (NOT exposed to host) ─────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: jj_redis
+    restart: always
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── FastAPI Backend (proxied by Caddy, no host port) ────────────────────────
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: jj_backend
+    restart: always
+    environment:
+      <<: *backend-env
+    volumes:
+      - backend_data:/app/data
+      - ./logs/backend:/app/logs
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ── Celery Worker ───────────────────────────────────────────────────────────
+  celery_worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: jj_celery_worker
+    restart: always
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2 -Q default,scans,ai,reports
+    environment:
+      <<: *backend-env
+      CELERY_WORKER: "1"
+    volumes:
+      - backend_data:/app/data
+      - ./logs/worker:/app/logs
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+      backend:  { condition: service_healthy }
+
+  # ── Celery Beat (scheduler) ─────────────────────────────────────────────────
+  celery_beat:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: jj_celery_beat
+    restart: always
+    command: celery -A app.workers.celery_app beat --loglevel=info --schedule=/app/celerybeat-schedule
+    environment:
+      <<: *backend-env
+    volumes:
+      - celerybeat_data:/app
+      - backend_data:/app/data
+      - ./logs/beat:/app/logs
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+      backend:  { condition: service_healthy }
+
+  # ── Next.js Frontend (proxied by Caddy, no host port) ───────────────────────
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://${DOMAIN}
+        BACKEND_URL: http://backend:8000
+    container_name: jj_frontend
+    restart: always
+    environment:
+      NEXT_PUBLIC_API_URL: https://${DOMAIN}
+      BACKEND_URL: http://backend:8000
+    depends_on:
+      backend: { condition: service_healthy }
+
+  # ── Caddy reverse proxy + auto-HTTPS ────────────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    container_name: jj_caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      DOMAIN: ${DOMAIN}
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  postgres_data:
+  redis_data:
+  celerybeat_data:
+  backend_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  default:
+    name: jj_prod_net
