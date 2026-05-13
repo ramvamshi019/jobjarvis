@@ -39,6 +39,8 @@ def _serialize(m: dict) -> dict:
 @router.get("")
 async def get_matches(
     limit: int = Query(50, ge=1, le=200),
+    country: str = Query("us", regex="^(us|remote|all)$"),
+    recency_days: int | None = Query(None, ge=1, le=365),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -46,12 +48,20 @@ async def get_matches(
     Return the user's persisted top matches (sorted by composite score).
     The matches are populated automatically on resume upload; the user can
     also force a recompute via POST /matches/refresh.
+
+    Query params:
+      country=us|remote|all (default us)
+      recency_days=N (limit to jobs first seen in last N days)
     """
-    rows = await list_matches_for_user(db, current_user.id, limit=limit)
+    rows = await list_matches_for_user(
+        db, current_user.id, limit=limit,
+        country=country, recency_days=recency_days,
+    )
     return {
         "user_id": current_user.id,
         "count": len(rows),
         "matches": [_serialize(r) for r in rows],
+        "filters": {"country": country, "recency_days": recency_days},
     }
 
 

@@ -72,6 +72,13 @@ _MATCH_SQL = text(
       AND c.active = true
       AND je.embedding IS NOT NULL
       AND ur.embedding IS NOT NULL
+      -- US-friendly default: US + Remote roles, plus uncategorized
+      -- (uncategorized often includes US jobs whose location string didn't
+      -- match the country backfill regex; we'd rather include than exclude).
+      AND (j.country IN ('US', 'REMOTE') OR j.country IS NULL)
+      -- Hard-exclude obvious non-US/non-remote countries
+      AND (j.country IS NULL OR j.country NOT IN
+           ('IN','GB','DE','FR','ES','NL','BR','AU','SG','JP','IE','MX'))
     ORDER BY (1 - (je.embedding <=> ur.embedding)) DESC
     LIMIT :limit
     """
@@ -175,13 +182,57 @@ async def recompute_matches_for_user(
 
 async def list_matches_for_user(
     db: AsyncSession, user_id: int, limit: int = 50,
+    country: str = "us",          # "us" | "remote" | "all"
+    recency_days: int | None = None,  # None = no recency filter
 ) -> list[dict]:
     """
     Read the persisted job_matches for a user, joined with the jobs table
     so the API can return rich rows for the UI.
+
+    Args:
+      country: "us" → US + Remote + uncategorized (excluding obvious non-US);
+               "remote" → Remote-only;
+               "all" → no country filter.
+      recency_days: limit to jobs first seen in the last N days.
     """
+    where_clauses = [
+        "jm.user_id = :uid",
+        "j.active = true",
+        "c.active = true",
+    ]
+    params: dict = {"uid": user_id, "limit": limit}
+
+    # Country filter
+    if country == "us":
+        where_clauses.append(
+            "(j.country IN ('US', 'REMOTE') OR j.country IS NULL)"
+        )
+        where_clauses.append(
+            "(j.country IS NULL OR j.country NOT IN "
+            "('IN','GB','DE','FR','ES','NL','BR','AU','SG','JP','IE','MX'))"
+        )
+        # Belt-and-suspenders: exclude obvious non-US location text
+        where_clauses.append(
+            "NOT (LOWER(COALESCE(j.location,'')) ~ "
+            "'\\\\m(emea|apac|latam|asia|europe|"
+            "barcelona|madrid|berlin|munich|amsterdam|paris|london|dublin|"
+            "armenia|cyprus|warsaw|prague|bucharest|kyiv|"
+            "bangalore|hyderabad|delhi|mumbai|chennai|pune|"
+            "tokyo|osaka|seoul|singapore|sydney|melbourne|sao paulo|"
+            "mexico city|guadalajara|toronto|vancouver)\\\\M')"
+        )
+    elif country == "remote":
+        where_clauses.append("j.country = 'REMOTE' OR j.remote_type = 'remote'")
+
+    # Recency filter — use posted_at if available, else fall back to first_seen_at
+    if recency_days and recency_days > 0:
+        where_clauses.append(
+            "COALESCE(j.posted_at, j.first_seen_at) > NOW() - INTERVAL '{} days'"
+            .format(int(recency_days))
+        )
+
     sql = text(
-        """
+        f"""
         SELECT
             jm.match_score, jm.sim_score, jm.salary_fit,
             jm.location_fit, jm.freshness_score, jm.created_at AS matched_at,
@@ -192,12 +243,10 @@ async def list_matches_for_user(
         FROM job_matches jm
         JOIN jobs j      ON j.id  = jm.job_id
         JOIN companies c ON c.id  = j.company_id
-        WHERE jm.user_id = :uid
-          AND j.active = true
-          AND c.active = true
+        WHERE {' AND '.join(where_clauses)}
         ORDER BY jm.match_score DESC
         LIMIT :limit
         """
     )
-    res = await db.execute(sql, {"uid": user_id, "limit": limit})
+    res = await db.execute(sql, params)
     return [dict(r) for r in res.mappings().all()]

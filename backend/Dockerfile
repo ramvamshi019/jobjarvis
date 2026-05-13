@@ -26,7 +26,14 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
+    postgresql-client \
     curl \
+    gzip \
+    # Playwright/Chromium runtime libs (auto-apply agent)
+    libnss3 libnspr4 libdbus-1-3 libatk1.0-0 libatk-bridge2.0-0 \
+    libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
+    libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2 \
+    libxshmfence1 libgtk-3-0 fonts-liberation libappindicator3-1 xdg-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy virtual-env from builder
@@ -39,8 +46,8 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 # Copy application source
 COPY . .
 
-# Create log / upload / data dirs with correct ownership
-RUN mkdir -p /app/logs /app/uploads /app/data && chown -R appuser:appuser /app
+# Create log / upload / data / backup dirs with correct ownership
+RUN mkdir -p /app/logs /app/uploads /app/data /app/backups && chown -R appuser:appuser /app
 
 USER appuser
 

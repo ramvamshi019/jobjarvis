@@ -51,6 +51,9 @@ export default function NavBar() {
             {user && (
               <NavLink href="/matches" label="My Matches" current={active("/matches")} />
             )}
+            {user && (
+              <NavLink href="/review" label="Review" current={active("/review")} />
+            )}
             <NavLink href="/analytics" label="Analytics" current={active("/analytics")} />
             <NavLink href="/companies" label="Companies" current={active("/companies")} />
             {user && (

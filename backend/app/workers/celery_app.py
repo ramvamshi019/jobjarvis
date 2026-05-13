@@ -71,6 +71,15 @@ celery_app = Celery(
         "app.workers.ml_tasks",
         "app.workers.jobboard_tasks",
         "app.workers.ats_directory_tasks",
+        "app.workers.notification_tasks",
+        "app.workers.auto_apply_tasks",
+        "app.workers.cities_discovery_tasks",
+        "app.workers.backup_tasks",
+        "app.workers.megaemployer_tasks",
+        "app.workers.extra_job_sources",
+        "app.workers.vc_portfolio_discovery",
+        "app.workers.ai_company_discovery",
+        "app.workers.ats_promoter_tasks",
     ],
 )
 
@@ -140,6 +149,69 @@ celery_app.conf.update(
             "task": "app.workers.discovery_tasks.discover_companies_task",
             "schedule": crontab(hour=3, minute=0, day_of_week="0,3,6"),
         },
+        # 30 US-city Wikidata + Built In sweep: weekly Sunday at 2 AM UTC
+        "discover-us-cities": {
+            "task": "app.workers.cities_discovery_tasks.discover_us_cities",
+            "schedule": crontab(hour=2, minute=0, day_of_week=0),
+        },
+        # Daily Postgres backup at 03:30 UTC — keeps 7 days of dumps in
+        # /app/backups (persistent volume).
+        "daily-db-backup": {
+            "task": "app.workers.backup_tasks.backup_database",
+            "schedule": crontab(hour=3, minute=30),
+        },
+
+        # ── Extra job sources ────────────────────────────────────────────
+        # USAJobs.gov — federal/state tech jobs.  Every 30 min.
+        "fetch-usajobs": {
+            "task": "app.workers.extra_job_sources.fetch_usajobs",
+            "schedule": crontab(minute="5,35"),
+        },
+        # Reddit r/forhire & r/remotejs — niche tech listings.  Every 30 min.
+        "fetch-reddit-hiring": {
+            "task": "app.workers.extra_job_sources.fetch_reddit",
+            "schedule": crontab(minute="10,40"),
+        },
+        # HN Show HN / Launch HN  — discover hiring startups.  Daily 04:30 UTC.
+        "discover-hn-launches": {
+            "task": "app.workers.extra_job_sources.discover_hn_launches",
+            "schedule": crontab(hour=4, minute=30),
+        },
+        # GitHub Trending — discover hiring orgs.  Daily 05:00 UTC.
+        "discover-github-trending": {
+            "task": "app.workers.extra_job_sources.discover_github_trending",
+            "schedule": crontab(hour=5, minute=0),
+        },
+        # VC portfolio sweep (16 top VCs) — weekly Sunday 03:00 UTC.
+        # Yields high-quality Series A+ startups that are actively hiring.
+        "discover-vc-portfolios": {
+            "task": "app.workers.vc_portfolio_discovery.discover_vc_portfolios",
+            "schedule": crontab(hour=3, minute=0, day_of_week=0),
+        },
+        # TechCrunch funding RSS — every 30 min, captures newly funded
+        # companies as they get announced.
+        "discover-techcrunch-funding": {
+            "task": "app.workers.vc_portfolio_discovery.discover_techcrunch_funding",
+            "schedule": crontab(minute="15,45"),
+        },
+
+        # ── AI-driven company discovery ──────────────────────────────────
+        # Every hour, Claude picks the next theme from a rotating list of
+        # ~45 themes (industries, cities, stages, tech-skills) and suggests
+        # 40-60 hiring US companies.  Each is probed for ATS + upserted.
+        # At ~$0.015 per call, ~$11/month total cost.
+        "ai-discover-companies": {
+            "task": "app.workers.ai_company_discovery.discover_via_ai",
+            "schedule": crontab(minute=25, hour="*/1"),
+        },
+        # ATS auto-promoter — picks 50 ats=unknown companies every 30 min,
+        # fetches their careers page, looks for embedded Greenhouse / Lever /
+        # Workday / etc. links, and auto-upgrades them.  Converts ~50-70% of
+        # unknowns into scannable companies over time.
+        "promote-unknown-companies": {
+            "task": "app.workers.ats_promoter_tasks.promote_unknown_companies",
+            "schedule": crontab(minute="0,30"),
+        },
 
         # ── AI auto-healer ────────────────────────────────────────────────
         # Fixes broken ATS connectors automatically every morning
@@ -174,11 +246,20 @@ celery_app.conf.update(
         },
 
         # ── Job board APIs ────────────────────────────────────────────────
-        # RemoteOK, The Muse, Arbeitnow, HN Hiring, Adzuna: every 2 hours
+        # RemoteOK, The Muse, Arbeitnow, HN Hiring, Adzuna: every 30 min
         "fetch-job-boards": {
             "task": "app.workers.jobboard_tasks.fetch_all_boards",
-            "schedule": crontab(minute=45, hour="*/2"),
+            "schedule": crontab(minute="*/30"),
         },
+        # Big-volume employers (Amazon, Microsoft, Apple, Google, Stripe):
+        # DISABLED — their public API endpoints changed since this code was
+        # written, all currently return 0.  Re-enable once URLs are updated.
+        # Tracked work item: probe live endpoints and update megaemployer_tasks.py.
+        #
+        # "fetch-megaemployers": {
+        #     "task": "app.workers.megaemployer_tasks.fetch_all_megaemployers",
+        #     "schedule": crontab(minute=20, hour="*/1"),
+        # },
 
         # ── AI / intelligence tasks ───────────────────────────────────────
         "run-career-agent": {
@@ -196,6 +277,13 @@ celery_app.conf.update(
         "self-correction": {
             "task": "app.workers.ai_tasks.run_self_correction_all_users",
             "schedule": crontab(hour=5, minute=0),
+        },
+
+        # ── Real-time match alerts ────────────────────────────────────────
+        # Push Slack/email when new top-10 matches appear (every 15 min)
+        "push-match-alerts": {
+            "task": "app.workers.notification_tasks.push_new_match_notifications",
+            "schedule": crontab(minute="*/15"),
         },
     },
 )

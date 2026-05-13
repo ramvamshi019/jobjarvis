@@ -13,8 +13,14 @@
 {$DOMAIN} {
     encode zstd gzip
 
+    # Hide API docs in production — don't advertise the full API surface.
+    # (To temporarily re-enable for debugging, remove this stanza and
+    # restart caddy: docker compose restart caddy)
+    @docs path /docs /openapi.json /redoc
+    respond @docs 404
+
     # Backend API
-    @api path /api/* /docs /openapi.json /redoc
+    @api path /api/*
     handle @api {
         reverse_proxy backend:8000
     }

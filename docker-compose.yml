@@ -17,11 +17,18 @@ x-backend-env: &backend-env
   AI_DAILY_BUDGET_USD: ${AI_DAILY_BUDGET_USD:-5.0}
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
   ENVIRONMENT: ${ENVIRONMENT:-development}
+  SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
   # Embedding backend — sentence-transformers (free, local, 384 dims)
   EMBEDDING_BACKEND: sentence_transformers
   ST_MODEL: all-MiniLM-L6-v2
   VECTOR_DIMENSIONS: "384"
   ML_MODEL_PATH: /app/data/models
+  # HF / sentence-transformers cache → writable dir (HOME is read-only)
+  HF_HOME: /tmp/hf_cache
+  SENTENCE_TRANSFORMERS_HOME: /tmp/st_cache
+  XDG_CACHE_HOME: /tmp/xdg_cache
+  # Playwright browsers → writable dir
+  PLAYWRIGHT_BROWSERS_PATH: /tmp/pw_browsers
 
 services:
 
@@ -78,6 +85,7 @@ services:
     volumes:
       - ./backend/uploads:/app/uploads
       - ./backend/logs:/app/logs
+      - ./backend/scripts:/app/scripts:ro      # ← scripts persist across rebuilds
       - backend_data:/app/data
     depends_on:
       postgres:
@@ -111,7 +119,10 @@ services:
     volumes:
       - ./backend/uploads:/app/uploads
       - ./backend/logs:/app/logs
+      - ./backend/scripts:/app/scripts:ro      # ← scripts persist across rebuilds
       - backend_data:/app/data
+      - playwright_browsers:/tmp/pw_browsers    # ← chromium persists across restarts
+      - playwright_artifacts:/tmp/auto_apply    # ← screenshots persist
     depends_on:
       postgres:
         condition: service_healthy
@@ -240,6 +251,8 @@ volumes:
   redis_data:
   celerybeat_data:
   backend_data:
+  playwright_browsers:
+  playwright_artifacts:
 
 networks:
   default:

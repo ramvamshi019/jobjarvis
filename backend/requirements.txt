@@ -65,3 +65,6 @@ anyio==4.4.0
 
 # Export
 openpyxl==3.1.4
+
+# Auto-apply browser automation
+playwright==1.45.0

@@ -528,6 +528,7 @@ async def _upsert_jobs(jobs: list[dict], source: str) -> int:
     now = datetime.now(timezone.utc)
 
     async with AsyncSessionLocal() as db:
+        seen_pairs_in_batch: set[tuple[int, str]] = set()
         for j in jobs:
             url = (j.get("job_url") or "").strip()
             if not url:
@@ -545,13 +546,30 @@ async def _upsert_jobs(jobs: list[dict], source: str) -> int:
             except Exception:
                 continue
 
+            # Skip if (company, external_id) already exists either in DB or
+            # earlier in this batch — protects against `uq_job_company_external`.
+            ext_id = (j.get("external_id") or "").strip() or None
+            if ext_id:
+                pair = (company_id, ext_id)
+                if pair in seen_pairs_in_batch:
+                    continue
+                exists_pair = await db.execute(
+                    select(Job.id).where(
+                        Job.company_id == company_id,
+                        Job.external_id == ext_id,
+                    )
+                )
+                if exists_pair.scalar_one_or_none():
+                    continue
+                seen_pairs_in_batch.add(pair)
+
             # Compute freshness
             posted_at = j.get("posted_at")
             freshness_score, freshness_label = _compute_freshness(posted_at, now)
 
             db.add(Job(
                 company_id        = company_id,
-                external_id       = j.get("external_id"),
+                external_id       = ext_id,
                 title             = j["title"][:500],
                 company_name      = j["company_name"][:500],
                 description       = (j.get("description") or "")[:50000],
@@ -579,13 +597,15 @@ async def _upsert_jobs(jobs: list[dict], source: str) -> int:
             ))
             inserted += 1
 
-            # Commit in batches of 100 to avoid huge transactions
-            if inserted % 100 == 0:
+            # Commit in batches of 50 to limit lost-on-error scope, and so a
+            # single integrity-violation rollback only loses ~50 rows.
+            if inserted % 50 == 0:
                 try:
                     await db.commit()
                 except Exception as exc:
                     logger.error("batch_commit_error", error=str(exc))
                     await db.rollback()
+                    inserted -= 50  # uncommitted rows are gone
 
         try:
             await db.commit()
@@ -639,6 +659,12 @@ def _parse_salary(text: str):
 def _compute_freshness(posted_at: Optional[datetime], now: datetime):
     if not posted_at:
         return 0.5, None
+    # Defensive: if a source returns a naive datetime, treat it as UTC so we
+    # don't crash on tz-mismatched subtraction.
+    if posted_at.tzinfo is None:
+        posted_at = posted_at.replace(tzinfo=timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
     diff_hours = (now - posted_at).total_seconds() / 3600
     if diff_hours <= 24:
         return 1.0, "last_24h"

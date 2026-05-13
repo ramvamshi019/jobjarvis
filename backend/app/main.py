@@ -15,7 +15,7 @@ from app.database import init_db, close_db
 from app.api.v1 import (
     health, auth, jobs, companies, applications,
     agent, resumes, admin, scans, reports, outreach,
-    matches,
+    matches, ai_assist, extension, profile, drafts,
 )
 from app.api.v1 import search as search_module
 from app.api.v1 import semantic_search as semantic_search_module
@@ -127,12 +127,22 @@ app = FastAPI(
 )
 
 # ── CORS ───────────────────────────────────────────────────────────────────────
+# Localhost is always permitted (dev).  Production origins are derived from:
+#   • CORS_ALLOWED_ORIGINS env var (comma-separated full URLs), and
+#   • the DOMAIN env var (auto-adds https://DOMAIN and https://www.DOMAIN).
+import os as _os
+_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+_extra = (_os.environ.get("CORS_ALLOWED_ORIGINS") or "").strip()
+if _extra:
+    _origins.extend([o.strip() for o in _extra.split(",") if o.strip()])
+_domain = (_os.environ.get("DOMAIN") or "").strip()
+if _domain:
+    _origins.append(f"https://{_domain}")
+    _origins.append(f"https://www.{_domain}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000"
-    ],
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -152,6 +162,10 @@ app.include_router(applications.router, prefix=API_PREFIX)
 app.include_router(agent.router, prefix=API_PREFIX)
 app.include_router(resumes.router, prefix=API_PREFIX)
 app.include_router(matches.router, prefix=API_PREFIX)
+app.include_router(ai_assist.router, prefix=API_PREFIX)
+app.include_router(extension.router, prefix=API_PREFIX)
+app.include_router(profile.router, prefix=API_PREFIX)
+app.include_router(drafts.router, prefix=API_PREFIX)
 app.include_router(admin.router, prefix=API_PREFIX)
 app.include_router(scans.router, prefix=API_PREFIX)
 app.include_router(reports.router, prefix=API_PREFIX)

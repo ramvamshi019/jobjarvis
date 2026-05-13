@@ -40,6 +40,34 @@ async def upload_resume(
     ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "txt"
     parsed = parse_resume_from_bytes(content, ext)
 
+    # Persist the raw file to disk so Playwright auto-apply can re-upload it.
+    # /app/uploads MUST be a mounted volume in production (see prod
+    # docker-compose); the old /tmp fallback silently lost user data on
+    # container restart, so we now fail loudly if the canonical path isn't
+    # writable rather than writing to non-persistent storage.
+    import os
+    from fastapi import HTTPException
+    user_dir = f"/app/uploads/{current_user.id}"
+    try:
+        os.makedirs(user_dir, exist_ok=True)
+        # Probe-write a marker file to confirm the volume is actually writable
+        marker = f"{user_dir}/.write_test"
+        with open(marker, "w") as _f:
+            _f.write("ok")
+        os.remove(marker)
+    except OSError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Resume storage is not writable. "
+                "Check that /app/uploads is mounted as a persistent volume."
+                f" ({e})"
+            ),
+        )
+    saved_path = f"{user_dir}/resume.{ext}"
+    with open(saved_path, "wb") as fh:
+        fh.write(content)
+
     # 1. Deactivate any existing resumes for this user
     await db.execute(
         update(ResumeVersion)
@@ -53,6 +81,7 @@ async def upload_resume(
         name=name or file.filename,
         target_role=target_role,
         content=parsed.raw_text,
+        file_path=saved_path,
         file_type=ext,
         skills_json=parsed.skills,
         tools_json=parsed.tools,

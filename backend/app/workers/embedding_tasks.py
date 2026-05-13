@@ -29,10 +29,41 @@ def _run_async(coro):
 # ── Celery task definitions ───────────────────────────────────────────────────
 
 @celery_app.task(name="app.workers.embedding_tasks.embed_new_jobs",
-                 soft_time_limit=1800, max_retries=1)
+                 soft_time_limit=3600, max_retries=1)
 def embed_new_jobs():
-    """Embed jobs that don't have an embedding yet (runs hourly)."""
-    return _run_async(_embed_new_jobs_async())
+    """
+    Embed jobs that don't have an embedding yet (runs every 15 min via beat).
+
+    Uses subprocess to invoke the standalone backfill script — bypasses the
+    fork+asyncpg deadlock that the SQLAlchemy session approach hits inside
+    Celery's prefork worker.
+    """
+    import subprocess
+    import os
+    script = "/tmp/backfill_embeddings.py"
+    if not os.path.exists(script):
+        # Fallback: copy from mounted /app/scripts if /tmp version is missing
+        alt = "/app/scripts/backfill_embeddings.py"
+        if os.path.exists(alt):
+            script = alt
+        else:
+            return {"error": "backfill_embeddings.py not found"}
+    try:
+        # Cap each run at 500 jobs so the beat schedule stays responsive.
+        # With ~30 jobs/sec that's ~17 sec per run, well under the 15-min interval.
+        result = subprocess.run(
+            ["python3", "-u", script, "--limit", "500"],
+            capture_output=True, text=True, timeout=3000,
+        )
+        return {
+            "status": "ok" if result.returncode == 0 else "failed",
+            "stdout_tail": result.stdout[-500:],
+            "stderr_tail": result.stderr[-500:],
+        }
+    except subprocess.TimeoutExpired:
+        return {"status": "timeout"}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
 
 
 @celery_app.task(name="app.workers.embedding_tasks.embed_all_jobs",

@@ -99,8 +99,21 @@ export async function activateResume(
 
 // ── Matches ──────────────────────────────────────────────────────────────────
 
-export async function getMatches(limit = 50): Promise<MatchesResponse> {
-  const res = await fetch(`/api/matches?limit=${limit}`, {
+export type CountryFilter = "us" | "remote" | "all";
+
+export async function getMatches(
+  opts: { limit?: number; country?: CountryFilter; recencyDays?: number | null } = {},
+): Promise<MatchesResponse> {
+  const limit = opts.limit ?? 50;
+  const country = opts.country ?? "us";
+  const params = new URLSearchParams({
+    limit: String(limit),
+    country,
+  });
+  if (opts.recencyDays && opts.recencyDays > 0) {
+    params.set("recency_days", String(opts.recencyDays));
+  }
+  const res = await fetch(`/api/matches?${params}`, {
     headers: { ...authHeaders() },
   });
   if (!res.ok) throw new Error(`Failed to load matches: ${res.status}`);
@@ -114,4 +127,34 @@ export async function refreshMatches(top = 50): Promise<{ computed: number }> {
   });
   if (!res.ok) throw new Error(`Failed to refresh matches: ${res.status}`);
   return res.json();
+}
+
+// ── AI assist ────────────────────────────────────────────────────────────────
+
+export async function generateCoverLetter(jobId: number): Promise<{ cover_letter: string }> {
+  const r = await fetch(`/api/ai/cover_letter/${jobId}`, {
+    method: "POST",
+    headers: { ...authHeaders() },
+  });
+  if (!r.ok) throw new Error((await r.json())?.detail || `Failed: ${r.status}`);
+  return r.json();
+}
+
+export async function tailorResumeForJob(jobId: number): Promise<{ tailored_resume: string }> {
+  const r = await fetch(`/api/ai/tailor_resume/${jobId}`, {
+    method: "POST",
+    headers: { ...authHeaders() },
+  });
+  if (!r.ok) throw new Error((await r.json())?.detail || `Failed: ${r.status}`);
+  return r.json();
+}
+
+export async function autoApply(jobIds: number[], dryRun = true): Promise<{ queued: number }> {
+  const r = await fetch("/api/ai/auto_apply", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ job_ids: jobIds, dry_run: dryRun }),
+  });
+  if (!r.ok) throw new Error((await r.json())?.detail || `Failed: ${r.status}`);
+  return r.json();
 }

@@ -77,6 +77,7 @@ services:
       <<: *backend-env
     volumes:
       - backend_data:/app/data
+      - uploads_data:/app/uploads          # user resumes — MUST persist
       - ./logs/backend:/app/logs
     depends_on:
       postgres: { condition: service_healthy }
@@ -100,13 +101,24 @@ services:
     environment:
       <<: *backend-env
       CELERY_WORKER: "1"
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/pw_browsers
     volumes:
       - backend_data:/app/data
+      - uploads_data:/app/uploads          # auto-apply needs to read resumes
+      - backups_data:/app/backups          # daily pg_dump archives (7-day retention)
+      - playwright_browsers:/tmp/pw_browsers     # avoid 170MB redownload on restart
+      - playwright_artifacts:/tmp/auto_apply     # screenshots + apply audit trail
       - ./logs/worker:/app/logs
     depends_on:
       postgres: { condition: service_healthy }
       redis:    { condition: service_healthy }
       backend:  { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.workers.celery_app inspect ping -d celery@$$HOSTNAME || exit 1"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 90s
 
   # ── Celery Beat (scheduler) ─────────────────────────────────────────────────
   celery_beat:
@@ -168,6 +180,10 @@ volumes:
   redis_data:
   celerybeat_data:
   backend_data:
+  uploads_data:              # user-uploaded resumes
+  backups_data:              # daily pg_dump archives (7-day retention)
+  playwright_browsers:       # cached Chromium build
+  playwright_artifacts:      # auto-apply screenshots
   caddy_data:
   caddy_config:
 
