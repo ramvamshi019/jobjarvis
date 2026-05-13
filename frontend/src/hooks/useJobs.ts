@@ -22,6 +22,7 @@ import type { Job, JobFilters, QueryState } from "@/types";
 import { searchJobs } from "@/lib/api";
 
 const PAGE_SIZE = 25;
+const AUTO_REFRESH_MS = 60_000;   // poll the API every 60s for new jobs
 
 export interface UseJobsReturn {
   jobs: Job[];
@@ -43,6 +44,11 @@ export function useJobs(initial: JobFilters = {}): UseJobsReturn {
     page: 1,
     page_size: PAGE_SIZE,
   });
+
+  // ── Auto-refresh tick — bumped every AUTO_REFRESH_MS while tab is visible.
+  // The bump is included in the effect deps so the fetch re-runs without
+  // changing `query` (which would reset the user's pagination).
+  const [refreshTick, setRefreshTick] = useState(0);
 
   // ── Derived results ───────────────────────────────────────────────────────
   const [jobs,    setJobs]    = useState<Job[]>([]);
@@ -99,8 +105,53 @@ export function useJobs(initial: JobFilters = {}): UseJobsReturn {
       alive = false;
       ctrl.abort();
     };
-  }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [query, refreshTick]); // eslint-disable-line react-hooks/exhaustive-deps
   // searchJobs is a stable module-level import — safe to omit from deps.
+
+  // ── Auto-refresh polling ──────────────────────────────────────────────────
+  // Every AUTO_REFRESH_MS, force a refetch by bumping refreshTick. We pause
+  // the timer when the tab is hidden (Page Visibility API) and fire one
+  // immediate refresh when the tab becomes visible again, so the user sees
+  // fresh data the moment they return.
+  // Only auto-refreshes page 1 — paginated scroll positions are preserved.
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    const start = () => {
+      if (timer) return;
+      timer = setInterval(() => {
+        // Only auto-refresh on page 1 to avoid yanking the user's scroll.
+        if (query.page === 1) {
+          appendRef.current = false;
+          setRefreshTick((t) => t + 1);
+        }
+      }, AUTO_REFRESH_MS);
+    };
+    const stop = () => {
+      if (timer) { clearInterval(timer); timer = null; }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        // Fire one immediate refresh when the user returns to the tab.
+        if (query.page === 1) {
+          appendRef.current = false;
+          setRefreshTick((t) => t + 1);
+        }
+        start();
+      } else {
+        stop();
+      }
+    };
+
+    if (document.visibilityState === "visible") start();
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [query.page]);
 
   // ── Public actions ────────────────────────────────────────────────────────
 
