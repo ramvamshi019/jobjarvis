@@ -1,0 +1,167 @@
+[Config] OPENAI_API_KEY not set — resumes use placeholder text until configured
+[Config] Telegram credentials not set — alerts disabled
+01:10:08 [INFO] scheduler: Job Automation Scheduler v2.0
+01:10:08 [INFO] scheduler:   Mode: loop | Interval: 30min | Resumes: False | Alerts: True
+01:10:08 [INFO] scheduler: Scheduler loop started (interval=30min)
+01:10:08 [INFO] scheduler: --- Run #1 ---
+01:10:08 [INFO] scheduler: ============================================================
+01:10:08 [INFO] scheduler: Pipeline run started at 2026-05-13T01:10:08.123644
+01:10:08 [INFO] pipeline: ============================================================
+01:10:08 [INFO] pipeline: Pipeline started at 2026-05-13T01:10:08.123910
+01:10:08 [INFO] pipeline: ============================================================
+01:10:08 [INFO] db: Database initialized (schema v2)
+01:10:08 [INFO] pipeline: [fetch] Fetching jobs from all sources...
+01:10:08 [INFO] fetch_jobs: ============================================================
+01:10:08 [INFO] fetch_jobs: Starting multi-source job fetch...
+01:10:08 [INFO] fetch_jobs: Enabled sources: ashby, greenhouse, lever
+01:10:08 [INFO] fetch_jobs: ============================================================
+01:10:08 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/canva/jobs?content=true "HTTP/1.1 404 Not Found"
+01:10:08 [ERROR] fetch_jobs: HTTP 404 for greenhouse:canva: https://boards-api.greenhouse.io/v1/boards/canva/jobs?content=true
+01:10:08 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/airtable/jobs?content=true "HTTP/1.1 200 OK"
+01:10:08 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/asana/jobs?content=true "HTTP/1.1 200 OK"
+01:10:08 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/brex/jobs?content=true "HTTP/1.1 200 OK"
+01:10:08 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/airbnb/jobs?content=true "HTTP/1.1 200 OK"
+01:10:08 [INFO] fetch_jobs: [Greenhouse] airtable: 21 jobs
+01:10:08 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/coinbase/jobs?content=true "HTTP/1.1 404 Not Found"
+01:10:08 [ERROR] fetch_jobs: HTTP 404 for greenhouse:coinbase: https://boards-api.greenhouse.io/v1/boards/coinbase/jobs?content=true
+01:10:08 [INFO] fetch_jobs: [Greenhouse] brex: 224 jobs
+01:10:08 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/chime/jobs?content=true "HTTP/1.1 200 OK"
+01:10:08 [INFO] fetch_jobs: [Greenhouse] asana: 131 jobs
+01:10:08 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/datadog/jobs?content=true "HTTP/1.1 200 OK"
+01:10:08 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/databricks/jobs?content=true "HTTP/1.1 200 OK"
+01:10:08 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/doordash/jobs?content=true "HTTP/1.1 404 Not Found"
+01:10:08 [INFO] fetch_jobs: [Greenhouse] airbnb: 236 jobs
+01:10:08 [ERROR] fetch_jobs: HTTP 404 for greenhouse:doordash: https://boards-api.greenhouse.io/v1/boards/doordash/jobs?content=true
+01:10:08 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/discord/jobs?content=true "HTTP/1.1 200 OK"
+01:10:08 [INFO] fetch_jobs: [Greenhouse] discord: 82 jobs
+01:10:08 [INFO] fetch_jobs: [Greenhouse] chime: 66 jobs
+01:10:09 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/duolingo/jobs?content=true "HTTP/1.1 200 OK"
+01:10:09 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/dropbox/jobs?content=true "HTTP/1.1 200 OK"
+01:10:09 [INFO] fetch_jobs: [Greenhouse] dropbox: 76 jobs
+01:10:09 [INFO] fetch_jobs: [Greenhouse] duolingo: 82 jobs
+01:10:09 [INFO] fetch_jobs: [Greenhouse] datadog: 412 jobs
+01:10:09 [INFO] fetch_jobs: [Greenhouse] databricks: 810 jobs
+01:10:09 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/figma/jobs?content=true "HTTP/1.1 200 OK"
+01:10:09 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/flexport/jobs?content=true "HTTP/1.1 200 OK"
+01:10:09 [INFO] fetch_jobs: [Greenhouse] flexport: 101 jobs
+01:10:09 [INFO] fetch_jobs: [Greenhouse] figma: 157 jobs
+01:10:09 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/hashicorp/jobs?content=true "HTTP/1.1 404 Not Found"
+01:10:09 [ERROR] fetch_jobs: HTTP 404 for greenhouse:hashicorp: https://boards-api.greenhouse.io/v1/boards/hashicorp/jobs?content=true
+01:10:09 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/gusto/jobs?content=true "HTTP/1.1 200 OK"
+01:10:09 [INFO] fetch_jobs: [Greenhouse] gusto: 75 jobs
+01:10:09 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/hubspot/jobs?content=true "HTTP/1.1 200 OK"
+01:10:09 [INFO] fetch_jobs: [Greenhouse] hubspot: 0 jobs
+01:10:09 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/instacart/jobs?content=true "HTTP/1.1 200 OK"
+01:10:09 [INFO] fetch_jobs: [Greenhouse] instacart: 120 jobs
+01:10:09 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/intercom/jobs?content=true "HTTP/1.1 200 OK"
+01:10:09 [INFO] fetch_jobs: [Greenhouse] intercom: 175 jobs
+01:10:10 [INFO] httpx: HTTP Request: GET https://api.lever.co/v0/postings/netflix?mode=json "HTTP/1.1 200 OK"
+01:10:10 [INFO] httpx: HTTP Request: GET https://api.lever.co/v0/postings/spotify?mode=json "HTTP/1.1 200 OK"
+01:10:10 [INFO] httpx: HTTP Request: GET https://api.lever.co/v0/postings/cloudflare?mode=json "HTTP/1.1 404 Not Found"
+01:10:10 [ERROR] fetch_jobs: HTTP 404 for lever:cloudflare: https://api.lever.co/v0/postings/cloudflare?mode=json
+01:10:10 [INFO] httpx: HTTP Request: GET https://api.lever.co/v0/postings/databricks?mode=json "HTTP/1.1 404 Not Found"
+01:10:10 [ERROR] fetch_jobs: HTTP 404 for lever:databricks: https://api.lever.co/v0/postings/databricks?mode=json
+01:10:10 [INFO] httpx: HTTP Request: GET https://api.lever.co/v0/postings/anthropic?mode=json "HTTP/1.1 404 Not Found"
+01:10:10 [ERROR] fetch_jobs: HTTP 404 for lever:anthropic: https://api.lever.co/v0/postings/anthropic?mode=json
+01:10:10 [INFO] httpx: HTTP Request: GET https://api.lever.co/v0/postings/anduril?mode=json "HTTP/1.1 404 Not Found"
+01:10:10 [ERROR] fetch_jobs: HTTP 404 for lever:anduril: https://api.lever.co/v0/postings/anduril?mode=json
+01:10:10 [INFO] httpx: HTTP Request: GET https://api.lever.co/v0/postings/grammarly?mode=json "HTTP/1.1 404 Not Found"
+01:10:10 [ERROR] fetch_jobs: HTTP 404 for lever:grammarly: https://api.lever.co/v0/postings/grammarly?mode=json
+01:10:10 [INFO] httpx: HTTP Request: GET https://api.lever.co/v0/postings/figma?mode=json "HTTP/1.1 404 Not Found"
+01:10:10 [ERROR] fetch_jobs: HTTP 404 for lever:figma: https://api.lever.co/v0/postings/figma?mode=json
+01:10:10 [INFO] httpx: HTTP Request: GET https://api.lever.co/v0/postings/notion?mode=json "HTTP/1.1 404 Not Found"
+01:10:10 [ERROR] fetch_jobs: HTTP 404 for lever:notion: https://api.lever.co/v0/postings/notion?mode=json
+01:10:10 [INFO] httpx: HTTP Request: GET https://api.lever.co/v0/postings/openai?mode=json "HTTP/1.1 404 Not Found"
+01:10:10 [ERROR] fetch_jobs: HTTP 404 for lever:openai: https://api.lever.co/v0/postings/openai?mode=json
+01:10:11 [INFO] httpx: HTTP Request: GET https://api.lever.co/v0/postings/plaid?mode=json "HTTP/1.1 200 OK"
+01:10:11 [INFO] httpx: HTTP Request: GET https://api.lever.co/v0/postings/reddit?mode=json "HTTP/1.1 404 Not Found"
+01:10:11 [ERROR] fetch_jobs: HTTP 404 for lever:reddit: https://api.lever.co/v0/postings/reddit?mode=json
+01:10:11 [INFO] fetch_jobs: [Lever] spotify: 200 jobs
+01:10:11 [INFO] httpx: HTTP Request: GET https://api.lever.co/v0/postings/rippling?mode=json "HTTP/1.1 404 Not Found"
+01:10:11 [ERROR] fetch_jobs: HTTP 404 for lever:rippling: https://api.lever.co/v0/postings/rippling?mode=json
+01:10:11 [INFO] httpx: HTTP Request: GET https://api.lever.co/v0/postings/scale?mode=json "HTTP/1.1 404 Not Found"
+01:10:11 [ERROR] fetch_jobs: HTTP 404 for lever:scale: https://api.lever.co/v0/postings/scale?mode=json
+01:10:11 [INFO] httpx: HTTP Request: GET https://api.lever.co/v0/postings/stripe?mode=json "HTTP/1.1 404 Not Found"
+01:10:11 [ERROR] fetch_jobs: HTTP 404 for lever:stripe: https://api.lever.co/v0/postings/stripe?mode=json
+01:10:11 [INFO] httpx: HTTP Request: GET https://api.lever.co/v0/postings/snyk?mode=json "HTTP/1.1 404 Not Found"
+01:10:11 [ERROR] fetch_jobs: HTTP 404 for lever:snyk: https://api.lever.co/v0/postings/snyk?mode=json
+01:10:11 [INFO] httpx: HTTP Request: GET https://api.lever.co/v0/postings/miro?mode=json "HTTP/1.1 404 Not Found"
+01:10:11 [ERROR] fetch_jobs: HTTP 404 for lever:miro: https://api.lever.co/v0/postings/miro?mode=json
+01:10:11 [INFO] httpx: HTTP Request: GET https://api.lever.co/v0/postings/vercel?mode=json "HTTP/1.1 404 Not Found"
+01:10:11 [ERROR] fetch_jobs: HTTP 404 for lever:vercel: https://api.lever.co/v0/postings/vercel?mode=json
+01:10:11 [INFO] fetch_jobs: [Lever] Total: 200 jobs from 18 boards
+01:10:11 [INFO] httpx: HTTP Request: GET https://api.ashbyhq.com/posting-api/job-board/ramp "HTTP/1.1 200 OK"
+01:10:11 [INFO] fetch_jobs: [Ashby] ramp: 110 jobs
+01:10:12 [INFO] httpx: HTTP Request: GET https://api.ashbyhq.com/posting-api/job-board/linear "HTTP/1.1 200 OK"
+01:10:12 [INFO] httpx: HTTP Request: GET https://api.ashbyhq.com/posting-api/job-board/notion "HTTP/1.1 200 OK"
+01:10:12 [INFO] fetch_jobs: [Ashby] linear: 23 jobs
+01:10:12 [INFO] httpx: HTTP Request: GET https://api.ashbyhq.com/posting-api/job-board/vercel "HTTP/1.1 200 OK"
+01:10:12 [INFO] fetch_jobs: [Ashby] vercel: 0 jobs
+01:10:12 [INFO] fetch_jobs: [Ashby] notion: 140 jobs
+01:10:12 [INFO] httpx: HTTP Request: GET https://api.ashbyhq.com/posting-api/job-board/clerk "HTTP/1.1 200 OK"
+01:10:12 [INFO] fetch_jobs: [Ashby] clerk: 1 jobs
+01:10:12 [INFO] httpx: HTTP Request: GET https://api.ashbyhq.com/posting-api/job-board/raycast "HTTP/1.1 200 OK"
+01:10:12 [INFO] fetch_jobs: [Ashby] raycast: 0 jobs
+01:10:12 [INFO] httpx: HTTP Request: GET https://api.ashbyhq.com/posting-api/job-board/resend "HTTP/1.1 200 OK"
+01:10:12 [INFO] fetch_jobs: [Ashby] resend: 6 jobs
+01:10:12 [INFO] httpx: HTTP Request: GET https://api.ashbyhq.com/posting-api/job-board/perplexity "HTTP/1.1 200 OK"
+01:10:12 [INFO] httpx: HTTP Request: GET https://api.ashbyhq.com/posting-api/job-board/elevenlabs "HTTP/1.1 200 OK"
+01:10:12 [INFO] fetch_jobs: [Ashby] perplexity: 65 jobs
+01:10:12 [INFO] fetch_jobs: [Ashby] elevenlabs: 143 jobs
+01:10:12 [INFO] httpx: HTTP Request: GET https://api.ashbyhq.com/posting-api/job-board/cursor "HTTP/1.1 200 OK"
+01:10:12 [INFO] fetch_jobs: [Ashby] cursor: 84 jobs
+01:10:12 [INFO] fetch_jobs: [Ashby] Total: 572 jobs from 10 boards
+01:10:12 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/klaviyo/jobs?content=true "HTTP/1.1 200 OK"
+01:10:12 [INFO] fetch_jobs: [Greenhouse] klaviyo: 238 jobs
+01:10:12 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/linear/jobs?content=true "HTTP/1.1 404 Not Found"
+01:10:12 [ERROR] fetch_jobs: HTTP 404 for greenhouse:linear: https://boards-api.greenhouse.io/v1/boards/linear/jobs?content=true
+01:10:12 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/lattice/jobs?content=true "HTTP/1.1 200 OK"
+01:10:12 [INFO] fetch_jobs: [Greenhouse] lattice: 9 jobs
+01:10:13 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/lyft/jobs?content=true "HTTP/1.1 200 OK"
+01:10:13 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/marqeta/jobs?content=true "HTTP/1.1 200 OK"
+01:10:13 [INFO] fetch_jobs: [Greenhouse] marqeta: 38 jobs
+01:10:13 [INFO] fetch_jobs: [Greenhouse] lyft: 128 jobs
+01:10:13 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/miro/jobs?content=true "HTTP/1.1 404 Not Found"
+01:10:13 [ERROR] fetch_jobs: HTTP 404 for greenhouse:miro: https://boards-api.greenhouse.io/v1/boards/miro/jobs?content=true
+01:10:13 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/mongodb/jobs?content=true "HTTP/1.1 200 OK"
+01:10:13 [INFO] fetch_jobs: [Greenhouse] mongodb: 418 jobs
+01:10:13 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/netlify/jobs?content=true "HTTP/1.1 200 OK"
+01:10:13 [INFO] fetch_jobs: [Greenhouse] netlify: 1 jobs
+01:10:13 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/notion/jobs?content=true "HTTP/1.1 404 Not Found"
+01:10:13 [ERROR] fetch_jobs: HTTP 404 for greenhouse:notion: https://boards-api.greenhouse.io/v1/boards/notion/jobs?content=true
+01:10:13 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/openai/jobs?content=true "HTTP/1.1 404 Not Found"
+01:10:13 [ERROR] fetch_jobs: HTTP 404 for greenhouse:openai: https://boards-api.greenhouse.io/v1/boards/openai/jobs?content=true
+01:10:13 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/nuro/jobs?content=true "HTTP/1.1 200 OK"
+01:10:13 [INFO] fetch_jobs: [Greenhouse] nuro: 104 jobs
+01:10:13 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/pagerduty/jobs?content=true "HTTP/1.1 200 OK"
+01:10:13 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/palantir/jobs?content=true "HTTP/1.1 404 Not Found"
+01:10:13 [ERROR] fetch_jobs: HTTP 404 for greenhouse:palantir: https://boards-api.greenhouse.io/v1/boards/palantir/jobs?content=true
+01:10:13 [INFO] fetch_jobs: [Greenhouse] pagerduty: 42 jobs
+01:10:14 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/plaid/jobs?content=true "HTTP/1.1 404 Not Found"
+01:10:14 [ERROR] fetch_jobs: HTTP 404 for greenhouse:plaid: https://boards-api.greenhouse.io/v1/boards/plaid/jobs?content=true
+01:10:14 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/postman/jobs?content=true "HTTP/1.1 200 OK"
+01:10:14 [INFO] fetch_jobs: [Greenhouse] postman: 118 jobs
+01:10:14 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/ramp/jobs?content=true "HTTP/1.1 404 Not Found"
+01:10:14 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/reddit/jobs?content=true "HTTP/1.1 200 OK"
+01:10:14 [ERROR] fetch_jobs: HTTP 404 for greenhouse:ramp: https://boards-api.greenhouse.io/v1/boards/ramp/jobs?content=true
+01:10:14 [INFO] fetch_jobs: [Greenhouse] reddit: 155 jobs
+01:10:14 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/rippling/jobs?content=true "HTTP/1.1 404 Not Found"
+01:10:14 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/retool/jobs?content=true "HTTP/1.1 404 Not Found"
+01:10:14 [ERROR] fetch_jobs: HTTP 404 for greenhouse:rippling: https://boards-api.greenhouse.io/v1/boards/rippling/jobs?content=true
+01:10:14 [ERROR] fetch_jobs: HTTP 404 for greenhouse:retool: https://boards-api.greenhouse.io/v1/boards/retool/jobs?content=true
+01:10:14 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/robinhood/jobs?content=true "HTTP/1.1 200 OK"
+01:10:14 [INFO] fetch_jobs: [Greenhouse] robinhood: 139 jobs
+01:10:14 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/roku/jobs?content=true "HTTP/1.1 200 OK"
+01:10:14 [INFO] fetch_jobs: [Greenhouse] roku: 264 jobs
+01:10:14 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/scale/jobs?content=true "HTTP/1.1 404 Not Found"
+01:10:14 [ERROR] fetch_jobs: HTTP 404 for greenhouse:scale: https://boards-api.greenhouse.io/v1/boards/scale/jobs?content=true
+01:10:14 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/segment/jobs?content=true "HTTP/1.1 404 Not Found"
+01:10:14 [ERROR] fetch_jobs: HTTP 404 for greenhouse:segment: https://boards-api.greenhouse.io/v1/boards/segment/jobs?content=true
+01:10:15 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/snyk/jobs?content=true "HTTP/1.1 404 Not Found"
+01:10:15 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/sentry/jobs?content=true "HTTP/1.1 404 Not Found"
+01:10:15 [ERROR] fetch_jobs: HTTP 404 for greenhouse:snyk: https://boards-api.greenhouse.io/v1/boards/snyk/jobs?content=true
+01:10:15 [ERROR] fetch_jobs: HTTP 404 for greenhouse:sentry: https://boards-api.greenhouse.io/v1/boards/sentry/jobs?content=true
+01:10:15 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/splunk/jobs?content=true "HTTP/1.1 404 Not Found"
+01:10:15 [INFO] httpx: HTTP Request: GET https://boards-api.greenhouse.io/v1/boards/squarespace/jobs?content=true "HTTP/1.1 200 OK"
+01:10:15 [ERROR] fetch_jobs: HTTP 404 for greenhouse:splunk: https://boards-api.greenhouse.io/v1/boards/splunk/jobs?content=true
+01:10:15 [INFO] fetch_jobs: [Greenhouse] squarespace: 28 jobs

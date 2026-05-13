@@ -174,12 +174,15 @@ async def search_jobs(
         filters.append(Job.role_category.ilike(f"%{role.strip()}%"))
 
     # ── Freshness filter ───────────────────────────────────────────────────
-    # Use posted_at when available (what the user sees in the card),
-    # falling back to first_seen_at for jobs where the ATS didn't provide a date.
+    # A job passes if EITHER it was posted recently OR we just discovered it
+    # recently.  Many ATS systems report a months-old posted_at on a role
+    # that's still active and being re-listed — gating on posted_at alone
+    # would hide today's freshly-ingested jobs.  first_seen_at is the
+    # authoritative "newness" signal for the user's feed.
     def _freshness_filter(cutoff):
         return or_(
+            Job.first_seen_at >= cutoff,
             and_(Job.posted_at.isnot(None), Job.posted_at >= cutoff),
-            and_(Job.posted_at.is_(None),   Job.first_seen_at >= cutoff),
         )
 
     if freshness == "last_24h":
@@ -200,14 +203,17 @@ async def search_jobs(
     total = total_result.scalar() or 0
 
     # ── Data query ─────────────────────────────────────────────────────────
+    # Sort: newest-ingested first, with freshness_score / posted_at as
+    # tiebreakers.  Putting first_seen_at first guarantees jobs we just
+    # discovered today land at the top of the list, regardless of how
+    # the company stamped their own posted_at (which is often null).
     data_q = (
         select(Job)
         .where(and_(*filters))
         .order_by(
-            desc(Job.freshness_score),       # freshest first
-            desc(Job.posted_at.is_(None)),   # nulls last within same score
-            desc(Job.posted_at),
             desc(Job.first_seen_at),
+            desc(Job.freshness_score),
+            desc(Job.posted_at),
         )
         .offset((page - 1) * page_size)
         .limit(page_size)

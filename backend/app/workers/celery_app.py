@@ -58,6 +58,41 @@ def _on_worker_init(**kwargs):
     # Re-read the root logger level that was set by setup_logging in the parent
     _configure_structlog(loglevel=logging.getLogger().level or logging.INFO)
 
+
+# ── Task lifecycle observability ────────────────────────────────────────────
+# These three handlers print a one-line summary for every task that
+# enters or leaves the worker, regardless of what the task itself logs.
+# Combined with PYTHONUNBUFFERED=1 in docker-compose, this makes
+# `docker compose logs celery_worker` actually show what's happening.
+
+_task_log = structlog.get_logger("celery.lifecycle")
+
+
+@signals.task_received.connect
+def _on_task_received(sender=None, request=None, **kwargs):
+    name = getattr(request, "task", "?")
+    tid = getattr(request, "id", "?")
+    _task_log.info("task_received", task=name, id=tid)
+
+
+@signals.task_success.connect
+def _on_task_success(sender=None, result=None, **kwargs):
+    name = getattr(sender, "name", "?")
+    tid = getattr(getattr(sender, "request", None), "id", "?")
+    _task_log.info("task_success", task=name, id=tid)
+
+
+@signals.task_failure.connect
+def _on_task_failure(sender=None, task_id=None, exception=None, **kwargs):
+    name = getattr(sender, "name", "?")
+    _task_log.error(
+        "task_failure",
+        task=name,
+        id=task_id,
+        error_type=type(exception).__name__ if exception else "?",
+        error=str(exception) if exception else "?",
+    )
+
 celery_app = Celery(
     "jobjarvis",
     broker=settings.CELERY_BROKER_URL,

@@ -80,7 +80,16 @@ export default function JobCard({ job, active, onClick, highlight }: Props) {
     job.location ||
     null;
 
-  const postedLabel = timeAgo(job.posted_at ?? job.first_seen_at);
+  // ATS feeds (Greenhouse, Lever, ...) sometimes return an ancient posted_at
+  // for re-listed roles — e.g. Palantir reposted in 2026 with posted_at=2019.
+  // The "X ago" label should never claim a job is older than we discovered
+  // it, so pick the most recent of the two timestamps.
+  const _postedMs    = job.posted_at      ? new Date(job.posted_at).getTime()      : 0;
+  const _firstSeenMs = job.first_seen_at  ? new Date(job.first_seen_at).getTime()  : 0;
+  const _effectiveTs = Math.max(_postedMs, _firstSeenMs);
+  const postedLabel  = _effectiveTs
+    ? timeAgo(new Date(_effectiveTs).toISOString())
+    : "—";
   const _isNew = isNew(job);
 
   return (

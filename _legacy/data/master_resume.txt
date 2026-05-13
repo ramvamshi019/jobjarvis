@@ -1,0 +1,73 @@
+Ram Vamshi Krishna Rudraram
+Springfield, MO | 417-419-8066 | ramvamshikrishna0@gmail.com | LinkedIn
+Professional Summary
+Results-driven Software Development Engineer in Test with 3+ years of experience designing and implementing scalable, enterprise-grade
+automation frameworks for web, mobile, API, and cloud-based applications. Proven expertise in UI, API, and data testing, CI/CD integration,
+and shift-left quality practices across Agile environments. Strong collaborator with engineering leaders, architects, and business stakeholders to
+align test strategies with Quality, Cost, and Delivery (QCD) goals. Experienced in regulated and large-scale enterprise environments, driving
+automation adoption, mentoring teams, and continuously improving test reliability, coverage, and delivery velocity.
+Professional Experience
+Walmart
+Software Development Engineer in Test Feb 2025 – Present
+ Designed and built scalable automation test frameworks and platforms to enable reliable application testing and streamlined deployments.
+ Developed and maintained UI and API automation suites using Selenium, TestCafe, Appium, and Java, covering end-to-end business
+workflows.
+ Collaborated closely with engineering leads, architects, and cross-functional teams to define test strategies aligned with Quality, Cost, and
+Delivery (QCD) goals.
+ Worked with development teams to drive quality agendas, applying shift-left testing practices throughout the software development
+lifecycle.
+ Integrated automated test execution into CI/CD pipelines using Jenkins, Git, Maven/Gradle, and Azure DevOps in a DevOps environment.
+ Performed API testing for RESTful and SOAP-based microservices, ensuring service reliability, data integrity, and backward compatibility.
+ Supported testing and validation of cloud-based applications on Microsoft Azure, including environment readiness and deployment
+verification.
+ Ensured adherence to QA best practices, Agile/Scrum methodologies, and CMMI-aligned quality processes.
+ Actively participated in Agile ceremonies including sprint planning, backlog grooming, defect triage, and release sign-offs.
+ Collaborated with business owners and technical stakeholders across global teams to gather requirements and clarify functional
+expectations.
+ Troubleshot automation, environment, and pipeline issues, guiding team members to improve stability and execution efficiency.
+ Contributed to hiring and team-building efforts, mentoring engineers and enabling high-performing Agile QA teams.
+ Participated in the adoption and contribution to open-source testing tools and frameworks to drive continuous improvement at scale.
+Johnson & Johnson
+QA Automation engineer Feb 2022 - Dec 2023
+ Designed and enhanced Python-based test automation frameworks using BDD principles, supporting automated testing for enterprise
+healthcare applications.
+ Implemented BDD test scenarios using Gherkin feature files and Python frameworks such as pytest and Robot Framework, enabling clear,
+business-readable test cases aligned with user stories.
+ Developed and maintained UI automation scripts using Playwright and Selenium WebDriver with Page Object Model (POM) for end-to-end
+(E2E) and regression testing.
+ Utilized Selenium Grid to execute parallel and cross-browser testing across Chrome, Firefox, and Edge, improving UI test coverage.
+ Supported select modules and proof-of-concept efforts using Cypress and WebDriverIO, based on application architecture and team needs.
+ Built data validation and ETL test frameworks by writing complex SQL queries to validate source-to-target mappings, transformations, and
+data integrity in AWS cloud environments.
+ Automated REST API test cases using Python, validating JSON payloads, authentication, and HTTP status codes for backend and
+microservices-based services.
+ Integrated Python, BDD, UI automation (Selenium/Playwright) test suites into CI/CD pipelines using Git, GitHub, and Jenkins/GitHub Actions
+for continuous testing.
+ Executed and maintained automation, functional, regression, integration, smoke, and sanity test cases across the SDLC/STLC.
+ Collaborated with Agile/Scrum teams during sprint planning and backlog grooming to define acceptance criteria, test strategies, and BDD
+scenarios.
+ Analyzed test execution results, performed root cause analysis, and tracked defects using JIRA, supporting incident, problem, and change
+management processes.
+ Supported QA and UAT environments, ensuring environment stability, test data readiness, and release validation.
+ Worked within a regulated healthcare environment, adhering to validation documentation, compliance, and quality standards.
+ Continuously improved automation coverage, framework stability, and execution efficiency, reducing manual regression effort and
+improving overall product quality.
+Education
+Missouri State University Springfield, MO
+Masters in Computer Science Jan 2024
+Koneru Lakshmaiah Education Foundation
+Bachelor of Technology in Computer Science and Engineering May 2023
+Technical Skills
+Category Skills
+Test Automation Selenium WebDriver, Playwright, TestCafe, Cypress, Appium
+API Testing REST API Automation, SOAP Services, JSON/XML Validation, Backend & Microservices Testing
+BDD & Frameworks Cucumber, Gherkin, Pytest, Robot Framework, Page Object Model (POM), Data-Driven Testing
+Programming Languages Java, Python
+CI/CD & DevOps Jenkins, GitHub Actions, Azure DevOps, CI/CD Pipelines
+Build & Version Control Maven, Gradle, Git, GitHub
+Cloud Platforms Microsoft Azure, AWS
+Database & Data Testing SQL, ETL Testing, Data Validation, Source-to-Target Mapping
+Test Types Functional, Regression, Smoke, Sanity, Integration, End-to-End (E2E)
+Agile & Quality Practices Agile/Scrum, Shift-Left Testing, Continuous Testing, CMMI-Aligned QA
+Test Management & Tools JIRA, Defect Tracking, Test Strategy & Planning
+Leadership & Collaboration Mentoring Engineers, Cross-Functional Collaboration, Hiring Support
