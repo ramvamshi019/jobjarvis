@@ -1,16 +1,16 @@
-# Caddy reverse proxy — auto-HTTPS via Let's Encrypt.
+# Caddy reverse proxy.
 #
-# {$DOMAIN} is read from the env var passed by docker-compose.
-# Caddy automatically provisions and renews a TLS cert for that domain.
+# NOTE: For DuckDNS domains we serve plain HTTP because DuckDNS nameservers
+# are too slow for Let's Encrypt validation (DNS lookups time out from
+# LE's secondary validators).  Once you move to a real domain (e.g. a
+# Namecheap $10/year .dev), change `http://{$DOMAIN}` back to `{$DOMAIN}`
+# and Caddy will provision HTTPS automatically.
 #
 # Routing:
 #   /api/*  → FastAPI backend container (port 8000)
 #   /*      → Next.js frontend container (port 3000)
-#
-# Add an A record in your DNS pointing $DOMAIN → your VM's external IP
-# BEFORE bringing this up, otherwise Let's Encrypt validation will fail.
 
-{$DOMAIN} {
+http://{$DOMAIN} {
     encode zstd gzip
 
     # Hide API docs in production — don't advertise the full API surface.
@@ -35,9 +35,8 @@
         max_size 10MB
     }
 
-    # Security headers
+    # Security headers (HSTS removed because we're on HTTP for now)
     header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains"
         X-Content-Type-Options    "nosniff"
         X-Frame-Options           "SAMEORIGIN"
         Referrer-Policy           "strict-origin-when-cross-origin"
