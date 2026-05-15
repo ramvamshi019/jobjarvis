@@ -120,6 +120,7 @@ celery_app = Celery(
         "app.workers.maintenance_tasks",
         "app.workers.jobspy_tasks",
         "app.workers.newgrad_sources",
+        "app.workers.application_tasks",
     ],
 )
 
@@ -145,6 +146,7 @@ celery_app.conf.update(
         "app.workers.maintenance_tasks.*":      {"queue": "scans"},
         "app.workers.jobspy_tasks.*":           {"queue": "scans"},
         "app.workers.newgrad_sources.*":        {"queue": "scans"},
+        "app.workers.application_tasks.*":      {"queue": "ai"},
     },
     task_default_queue="default",
     beat_schedule={

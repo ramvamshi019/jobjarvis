@@ -10,6 +10,11 @@ from app.database import Base
 
 class ApplicationStatus(str, enum.Enum):
     SAVED = "saved"
+    # Apply-queue flow (Jobright-style review-before-submit):
+    QUEUED = "queued"                       # User added; tailoring not yet running
+    TAILORING = "tailoring"                 # Background task generating tailored resume
+    READY_FOR_REVIEW = "ready_for_review"   # Tailored resume ready, awaiting user OK
+    TAILOR_FAILED = "tailor_failed"         # Tailoring task errored; user can retry
     FORM_PENDING = "form_pending"
     MANUAL_REQUIRED = "manual_required"
     APPLIED = "applied"
@@ -41,6 +46,17 @@ class Application(Base):
     interview_rounds: Mapped[int] = mapped_column(Integer, default=0)
     cover_letter: Mapped[Optional[str]] = mapped_column(Text)
     platform_used: Mapped[Optional[str]] = mapped_column(String(100))  # greenhouse|lever|company|linkedin
+
+    # ── Apply-queue / Jobright-style fields ──────────────────────────────
+    # Per-job tailored resume (plain text / markdown).  User can edit before
+    # submitting.  PDF is rendered on demand from this text.
+    tailored_resume_md: Mapped[Optional[str]] = mapped_column(Text)
+    # Resume fit score (0-100) computed at tailor time by Claude.
+    fit_score: Mapped[Optional[int]] = mapped_column(Integer)
+    # JSON blob from ai_writer.summarize_fit() — strengths/gaps/should_apply.
+    fit_summary_json: Mapped[Optional[dict]] = mapped_column(JSON)
+    # Error from tailoring task if any (set when status=TAILOR_FAILED).
+    tailoring_error: Mapped[Optional[str]] = mapped_column(Text)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

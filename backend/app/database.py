@@ -124,5 +124,28 @@ async def init_db() -> None:
             except Exception as e:
                 logger.warning("db.index_skipped name=%s error=%s", name, str(e)[:120])
 
+    # ── Schema migrations (idempotent ADD COLUMN IF NOT EXISTS) ───────────
+    # We don't use Alembic; instead we ALTER existing tables with
+    # `IF NOT EXISTS` so old prod DBs get the new columns on next boot
+    # without losing data.
+    _SCHEMA_PATCHES = [
+        # Apply-queue flow columns on `applications`
+        ("applications.tailored_resume_md",
+         "ALTER TABLE applications ADD COLUMN IF NOT EXISTS tailored_resume_md TEXT"),
+        ("applications.fit_score",
+         "ALTER TABLE applications ADD COLUMN IF NOT EXISTS fit_score INTEGER"),
+        ("applications.fit_summary_json",
+         "ALTER TABLE applications ADD COLUMN IF NOT EXISTS fit_summary_json JSONB"),
+        ("applications.tailoring_error",
+         "ALTER TABLE applications ADD COLUMN IF NOT EXISTS tailoring_error TEXT"),
+    ]
+    async with async_engine.begin() as conn:
+        for name, sql in _SCHEMA_PATCHES:
+            try:
+                await conn.execute(text(sql))
+                logger.info("db.column_ready name=%s", name)
+            except Exception as e:
+                logger.warning("db.column_skipped name=%s error=%s", name, str(e)[:120])
+
 async def close_db() -> None:
     await async_engine.dispose()
