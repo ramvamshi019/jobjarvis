@@ -111,7 +111,7 @@ async def _probe_company(client: httpx.AsyncClient, careers_url: str) -> Optiona
     return None
 
 
-async def _run_promoter(limit: int = 50) -> dict:
+async def _run_promoter(limit: int = 300) -> dict:
     """
     Pick up to `limit` ats=unknown companies (prefer recent additions),
     probe each, and UPDATE their ats/slug if we can resolve them.
@@ -190,5 +190,12 @@ async def _run_promoter(limit: int = 50) -> dict:
     name="app.workers.ats_promoter_tasks.promote_unknown_companies",
     soft_time_limit=600, max_retries=1,
 )
-def promote_unknown_companies(limit: int = 50) -> dict:
+def promote_unknown_companies(limit: int = 300) -> dict:
+    """Promote up to `limit` ats='unknown' companies per run.
+
+    Default raised from 50 → 300 to drain the levels.fyi backfill (~60k
+    unknowns).  At 300/run × every-10-min = 43,200/day → full drain in 1.5d.
+    The per-batch concurrency is 8, so each run does ~38 HTTP rounds at
+    ~5s each = ~3 min — well under the 10-min soft time limit.
+    """
     return _run_async(_run_promoter(limit=limit))

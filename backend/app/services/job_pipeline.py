@@ -79,7 +79,10 @@ logger = logging.getLogger(__name__)
 
 # ── Tunables ───────────────────────────────────────────────────────────────────
 BATCH_SIZE = 100           # rows per INSERT chunk — keeps param count safe
-MAX_JOBS_PER_COMPANY = 100 # cap raw jobs fetched per company per run
+MAX_JOBS_PER_COMPANY = 500 # cap raw jobs fetched per company per run
+                           # (was 100 — Bosch alone has 3,547 jobs, so 100 truncated
+                           #  hard. 500 covers ~99% of employers; the rare 1000+ ones
+                           #  get the tail on the next tier scan.)
 _MAX_COMPANIES_PER_RUN = 500
 _MICRO_BATCH_SIZE = 20     # companies per 60-second priority-queue tick
 _CONCURRENCY = 12          # simultaneous per-company coroutines

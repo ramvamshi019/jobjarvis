@@ -17,7 +17,12 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 COPY requirements.txt .
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt && \
+    # python-jobspy is installed --no-deps to bypass its strict NUMPY pin
+    # which conflicts with sentence-transformers / spacy / pandas.  Its
+    # runtime deps (bs4, requests, pydantic, pandas, numpy, tls-client)
+    # are already in requirements.txt above.
+    pip install --no-cache-dir --no-deps python-jobspy==1.1.82
 
 # ── Stage 2: runtime ──────────────────────────────────────────────────────────
 FROM python:3.11-slim AS runtime

@@ -68,3 +68,11 @@ openpyxl==3.1.4
 
 # Auto-apply browser automation
 playwright==1.45.0
+# python-jobspy is installed via a separate `--no-deps` RUN step in the
+# Dockerfile because its strict NUMPY pin conflicts with sentence-transformers
+# / spacy / pandas resolution.  Pandas/numpy/pydantic/requests are pinned
+# above; the rest of jobspy's runtime deps are listed here.
+beautifulsoup4>=4.12.2
+markdownify>=0.13.1
+regex>=2024.4.28
+tls-client>=1.0.1

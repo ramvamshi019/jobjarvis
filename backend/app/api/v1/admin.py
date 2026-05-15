@@ -347,6 +347,50 @@ async def run_stale_cleanup(
     return {"status": "started", "message": "Stale-company cleanup running in background."}
 
 
+@router.post("/discovery/tech-sources")
+async def run_tech_sources(
+    current_user: User = Depends(get_current_admin),
+):
+    """
+    Fire all 7 curated tech-company sources (Levels.fyi, Hugging Face, CNCF,
+    GitHub top orgs, Forbes lists, CB Insights unicorns, OpenAI/Anthropic
+    customer logos) sequentially.  Adds ~10–15k US-tech-focused companies
+    in ~20–40 minutes.  Idempotent.
+    """
+    from app.workers.tech_company_sources import discover_all_tech_sources_task
+    async_result = discover_all_tech_sources_task.delay()
+    return {
+        "status":  "queued",
+        "task_id": async_result.id,
+        "message": "Curated tech-sources discovery dispatched. Watch celery_worker logs "
+                   "for tech_src_done events.",
+    }
+
+
+@router.post("/discovery/bootstrap")
+async def run_bulk_bootstrap(
+    current_user: User = Depends(get_current_admin),
+):
+    """
+    One-shot bootstrap: fire all four bulk-discovery sources sequentially
+    (HN Who's Hiring, YC complete batches, awesome-lists, Common Crawl ATS
+    index).  Adds ~10–25k US tech companies in ~30–45 minutes.
+
+    Returns immediately; the work runs on a Celery worker.  Watch the
+    `bulk_disco_*` log keys for progress.  Idempotent — safe to re-run.
+    """
+    from app.workers.bulk_discovery_tasks import bootstrap_all_sources_task
+
+    async_result = bootstrap_all_sources_task.delay()
+    return {
+        "status":  "queued",
+        "task_id": async_result.id,
+        "message": "Bulk-discovery bootstrap dispatched. Watch celery_worker logs for "
+                   "bulk_disco_hn_*, bulk_disco_yc_*, bulk_disco_awesome_*, "
+                   "bulk_disco_cc_* and bootstrap_all_sources_done.",
+    }
+
+
 @router.get("/pipeline/metrics")
 async def pipeline_metrics(
     db: AsyncSession = Depends(get_db),

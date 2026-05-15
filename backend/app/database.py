@@ -88,5 +88,41 @@ async def init_db() -> None:
         await conn.run_sync(Base.metadata.create_all)
         logger.info("db.tables_ready")
 
+    # ── Scale-out indexes ─────────────────────────────────────────────────
+    # Partial indexes filtered to `active=true` make the hot analytics +
+    # scheduler queries fast at 100k+ rows.  We use plain `CREATE INDEX IF
+    # NOT EXISTS` (not CONCURRENTLY) because:
+    #   - CONCURRENTLY deadlocks against active scans hitting the same tables
+    #   - On a fresh DB the indexes build in <1s; on a populated DB they
+    #     build in <10s and block writers only briefly
+    #   - Subsequent boots short-circuit on IF NOT EXISTS — no rebuild cost
+    # If you ever need a true zero-downtime build on a huge live DB, run
+    # CONCURRENTLY manually via psql during a quiet window.
+    _PARTIAL_INDEXES = [
+        ("ix_jobs_active_first_seen_partial",
+         "CREATE INDEX IF NOT EXISTS ix_jobs_active_first_seen_partial "
+         "ON jobs (first_seen_at DESC) WHERE active = true"),
+        ("ix_jobs_active_posted_at_partial",
+         "CREATE INDEX IF NOT EXISTS ix_jobs_active_posted_at_partial "
+         "ON jobs (posted_at DESC NULLS LAST) WHERE active = true"),
+        ("ix_jobs_active_role_partial",
+         "CREATE INDEX IF NOT EXISTS ix_jobs_active_role_partial "
+         "ON jobs (role_category, country) WHERE active = true"),
+        ("ix_companies_active_next_scan_partial",
+         "CREATE INDEX IF NOT EXISTS ix_companies_active_next_scan_partial "
+         "ON companies (priority_score DESC, next_scan_at NULLS FIRST) "
+         "WHERE active = true AND is_blocklisted = false"),
+        ("ix_companies_active_created_at_partial",
+         "CREATE INDEX IF NOT EXISTS ix_companies_active_created_at_partial "
+         "ON companies (created_at DESC) WHERE active = true"),
+    ]
+    async with async_engine.begin() as conn:
+        for name, sql in _PARTIAL_INDEXES:
+            try:
+                await conn.execute(text(sql))
+                logger.info("db.index_ready name=%s", name)
+            except Exception as e:
+                logger.warning("db.index_skipped name=%s error=%s", name, str(e)[:120])
+
 async def close_db() -> None:
     await async_engine.dispose()

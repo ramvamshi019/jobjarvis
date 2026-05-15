@@ -105,6 +105,48 @@ async def lifespan(app: FastAPI):
         except Exception as exc:
             logger.warning("startup.realtime_monitor_failed", error=str(exc))
 
+    # ── 5. Auto-bootstrap company corpus when small ────────────────────────
+    # Two-stage bootstrap on every startup, gated by current corpus size:
+    #   • < BOOTSTRAP_TARGET     (default 30k): fire HN + YC + awesome + CC
+    #     bulk sources via `bootstrap_all_sources_task`.
+    #   • < TECH_SOURCES_TARGET  (default 80k): fire Levels.fyi + Hugging Face
+    #     + CNCF + GitHub + Forbes + CBI + AI customers via
+    #     `discover_all_tech_sources_task`.
+    # Both are idempotent — re-running de-dups on the (ats, slug) and
+    # case-insensitive name unique indexes, so it's safe on every startup.
+    if _system_state["db"] == "ok" and _system_state["redis"] == "ok":
+        try:
+            import os as _os_b
+            target_bulk = int(_os_b.environ.get("BOOTSTRAP_TARGET",      "30000"))
+            target_tech = int(_os_b.environ.get("TECH_SOURCES_TARGET",   "80000"))
+            enabled     = _os_b.environ.get("AUTO_BOOTSTRAP", "1").lower() in ("1","true","yes")
+            if enabled:
+                from app.database import AsyncSessionLocal as _ASL
+                from sqlalchemy import select as _sel, func as _func
+                from app.models.company import Company as _C
+                async with _ASL() as db:
+                    cur = (await db.execute(_sel(_func.count(_C.id)).where(_C.active == True))).scalar() or 0
+
+                # Stage A: bulk sources (HN + YC + awesome + Common Crawl)
+                if cur < target_bulk:
+                    from app.workers.bulk_discovery_tasks import bootstrap_all_sources_task
+                    bootstrap_all_sources_task.apply_async(countdown=30)
+                    logger.info("startup.bootstrap_bulk_queued",
+                                companies=cur, target=target_bulk, delay_seconds=30)
+
+                # Stage B: curated tech sources (Levels + HF + CNCF + ...)
+                if cur < target_tech:
+                    from app.workers.tech_company_sources import discover_all_tech_sources_task
+                    discover_all_tech_sources_task.apply_async(countdown=120)
+                    logger.info("startup.bootstrap_tech_queued",
+                                companies=cur, target=target_tech, delay_seconds=120)
+
+                if cur >= target_tech:
+                    logger.info("startup.bootstrap_skipped_corpus_full",
+                                companies=cur, bulk_target=target_bulk, tech_target=target_tech)
+        except Exception as exc:
+            logger.warning("startup.bootstrap_failed", error=str(exc))
+
     yield  # ── Application serves requests here ──────────────────────
 
     # ── Shutdown ────────────────────────────────────────────────────────────

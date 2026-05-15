@@ -109,6 +109,25 @@ THEMES: list[str] = [
     "Companies hiring ML / deep learning research engineers",
     "Companies hiring data platform / data infrastructure engineers",
     "Companies hiring platform / SRE / infrastructure engineers",
+
+    # ── New-grad / entry-level focused themes ─────────────────────────────
+    # These bias the hourly Claude rotation toward companies with explicit
+    # University Recruiting programs and active 2026 new-grad pipelines.
+    "US tech companies running 2026 new-grad SWE programs (university recruiting)",
+    "US tech companies that explicitly hire MS / MEng new-grad engineers (CS, AI/ML, robotics)",
+    "Companies that sponsor H-1B visas for new-grad software engineers in the US",
+    "Fortune 500 companies with formal early-career rotational engineering programs",
+    "US tech companies with active 2026 summer software engineering internship listings",
+    "Mid-sized US tech companies (Series C-D) that hire entry-level engineers",
+    "Quant trading firms that hire new-grad engineers (Jane Street, Two Sigma, Citadel, HRT, Jump, Tower Research, DE Shaw, etc.)",
+    "AI/ML companies hiring new-grad research engineers and ML residents",
+    "US tech companies with published L3 / L4 / SDE-I new-grad SWE leveling",
+    "Bay Area, NYC, and Seattle startups posting entry-level SWE roles in the last 30 days",
+    "US tech companies hiring new-grad data engineers and data scientists",
+    "Defense / aerospace / dual-use tech companies hiring US-citizen new grads",
+    "Cybersecurity companies with new-grad security engineering tracks",
+    "Robotics and autonomous systems companies hiring new-grad MS/PhD engineers",
+    "Biotech and healthcare-tech companies hiring new-grad software engineers",
 ]
 
 

@@ -333,27 +333,62 @@ def normalize_currency(text: str) -> Optional[str]:
 # ── Experience level ───────────────────────────────────────────────────────────
 
 def classify_experience_level(title: str, description: str = "") -> str:
+    """Return one of: intern / entry / mid / senior / staff.
+
+    Rules ordered most-specific first.  Title is weighted heavily because
+    canonical entry-level signals ("SWE I", "Associate", "L3", "New Grad")
+    show up there even when the description repeats senior boilerplate.
+    """
+    title_l = title.lower()
     combined = f"{title} {description[:600]}".lower()
+
+    # Internships
     if re.search(r'\bintern\b|\binternship\b|\bco[\s-]?op\b', combined):
         return "intern"
+
+    # Entry-level title canonicals (title-only check — highest precedence).
+    # Catches: "Software Engineer I", "SWE I", "SDE I", "Engineer 1",
+    # "Associate Engineer", "Early Career", "L3", "Software Engineer, New Grad",
+    # "University Hire", "Software Engineer, 2026", "Entry Level Software Engineer".
+    if re.search(
+        r'\b(?:software\s+engineer|swe|sde|engineer|developer)\s*[,\s]\s*(?:i|1)\b'
+        r'|\b(?:swe|sde|engineer|developer)\s+1\b'
+        r'|\bassociate\s+(?:software\s+)?(?:engineer|developer|scientist)\b'
+        r'|\bearly[\s-]?career\b'
+        r'|\bl3\b|\blevel\s*3\b'
+        r'|\bnew[\s-]?grad\b'
+        r'|\bnew[\s-]?graduate\b'
+        r'|\buniversity[\s-]?(?:hire|grad|recruit)\b'
+        r'|\b202[5-9]\s+grad\b'
+        r'|\bentry[\s-]?level\b',
+        title_l,
+    ):
+        return "entry"
+
+    # Broader description-aware entry signals
     if re.search(
         r'\bjunior\b|\bentry[\s-]?level\b|\bnew\s+grad\b|\brecent\s+grad'
         r'|\bgraduate\b|\bjr\.?\b|\b0[\s-]?[–-]\s*[12]\s+years?\b',
-        combined
+        combined,
     ):
         return "entry"
+
+    # Staff/Principal/Director
     if re.search(
         r'\bstaff\b|\bprincipal\b|\bdirector\b|\bvp\b|\bvice\s+president'
         r'|\bhead\s+of\b|\bdistinguished\b|\bfellow\b',
-        combined
+        combined,
     ):
         return "staff"
+
+    # Senior / Lead / Mgr
     if re.search(
         r'\bsenior\b|\blead\b|\bsr\.?\b|\bmanager\b'
         r'|\b[5-9]\+\s+years?\b|\b1[0-9]\+\s+years?\b',
-        combined
+        combined,
     ):
         return "senior"
+
     return "mid"
 
 

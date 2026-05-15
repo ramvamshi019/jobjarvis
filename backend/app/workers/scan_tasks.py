@@ -1,5 +1,7 @@
 """Celery scan tasks — ingestion pipeline."""
 import asyncio
+import os
+import re
 import time
 from datetime import datetime, timezone, timedelta
 from typing import Optional
@@ -9,6 +11,103 @@ from app.workers.celery_app import celery_app
 from app.config import settings
 
 logger = structlog.get_logger(__name__)
+
+# ── Tech-only ingestion filter ─────────────────────────────────────────────────
+# When INGEST_TECH_ONLY=1 (default), we skip jobs whose normalized title is
+# clearly non-engineering (sales, marketing, HR, retail, hospitality, healthcare,
+# operations, finance, etc.).  This is the single biggest lever for cleaning up
+# the corpus when we're probing enterprises like SmartRecruiters customers that
+# post thousands of cashier/nurse/warehouse jobs.
+#
+# Two-stage filter:
+#   1.  TECH_ALLOW_RE matches → accept (covers most engineering roles and
+#       "Sales Engineer" / "Solutions Engineer" / "Customer Success Engineer"
+#       which are arguably tech-adjacent and worth keeping)
+#   2.  NON_TECH_REJECT_RE matches → reject
+#   3.  otherwise → accept (be permissive on ambiguous titles, the downstream
+#       role_category will tag them but they won't get blocked)
+#
+# Disable per-deployment with `INGEST_TECH_ONLY=0` in the env.
+INGEST_TECH_ONLY: bool = os.getenv("INGEST_TECH_ONLY", "1").lower() in ("1", "true", "yes")
+
+_TECH_ALLOW_RE = re.compile(
+    r"\b("
+    r"engineer|developer|programmer|architect|sre|devops|dev[\s-]?ops"
+    r"|data\s+scientist|data\s+analyst|machine\s+learning|deep\s+learning|llm|genai"
+    r"|software|backend|back[\s-]end|frontend|front[\s-]end|full[\s-]?stack"
+    r"|api|platform|infrastructure|cloud|kubernetes|sysadmin|security\s+engineer"
+    r"|qa|sdet|test\s+engineer|automation\s+engineer"
+    r"|technical\s+(lead|writer|program\s+manager)|cto|vp\s+engineering"
+    r"|research\s+(scientist|engineer)|robotics"
+    r")\b",
+    re.I,
+)
+
+_NON_TECH_REJECT_RE = re.compile(
+    r"\b("
+    # Retail / hospitality / food / cleaning
+    r"cashier|barista|server|waiter|waitress|bartender|host|hostess|busser"
+    r"|housekeeper|janitor|cleaner|custodian|maintenance\s+(tech|worker)"
+    r"|stock(er|ing)?|stocking|warehouse\s+associate|warehouse\s+worker|picker|packer|forklift"
+    r"|retail\s+(associate|sales|clerk|cashier)|sales\s+associate|store\s+(manager|associate)"
+    r"|line\s+cook|prep\s+cook|chef|baker|butcher|deli|pizza|crew\s+member"
+    r"|valet|doorman|porter|attendant|concierge|bellman|bellhop"
+    # Driving / logistics labour
+    r"|driver|chauffeur|courier|delivery\s+driver|truck\s+driver|cdl"
+    # Healthcare clinical
+    r"|nurse|nursing|rn\b|lpn\b|cna\b|caregiver|caretaker|aide|orderly"
+    r"|physician|doctor|dentist|surgeon|pharmacist|therapist|sonographer"
+    r"|radiologist|paramedic|emt|phlebotomist|medical\s+(assistant|technologist)"
+    # Trades / construction / labour
+    r"|plumber|electrician|carpenter|welder|mechanic|technician\s+(trainee|apprentice)"
+    r"|labourer|laborer|construction|roofer|mason|painter|installer"
+    # HR / talent / recruiting (almost never engineering)
+    r"|recruiter|talent\s+(acquisition|partner|sourcer)|sourcer\b|hr\s+(generalist|specialist|coordinator|business\s+partner)"
+    # Sales (keep "sales engineer" / "solutions engineer" via allow list)
+    r"|account\s+(executive|manager)|sdr\b|bdr\b|business\s+development\s+rep"
+    r"|inside\s+sales|outside\s+sales|sales\s+(rep|representative|associate|director|manager|coordinator)"
+    # Marketing / brand / content / design (non-engineering)
+    r"|marketing\s+(manager|specialist|coordinator|director|associate|analyst)"
+    r"|brand\s+(manager|specialist|director|ambassador)|copywriter|content\s+(writer|creator|strategist)"
+    r"|social\s+media|seo\s+specialist|growth\s+(marketer|specialist)"
+    r"|graphic\s+designer|ux\s+designer|visual\s+designer|art\s+director"
+    # Finance / accounting / legal / admin
+    r"|accountant|bookkeeper|controller|auditor|tax\s+(specialist|preparer)"
+    r"|paralegal|legal\s+(assistant|secretary|counsel|intern)|attorney|lawyer"
+    r"|executive\s+assistant|administrative\s+assistant|admin\s+assistant|receptionist|secretary"
+    r"|office\s+(manager|coordinator|administrator)"
+    # Operations / supply chain (non-engineering)
+    r"|operations\s+(manager|associate|coordinator|specialist|director|analyst)"
+    r"|supply\s+chain\s+(manager|analyst|coordinator)"
+    r"|customer\s+(service|success|support)\s+(rep|representative|associate|specialist|coordinator)"
+    r"|call\s+center|claims\s+(adjuster|processor|examiner)"
+    # Teaching / childcare / coaching
+    r"|teacher|tutor|instructor|professor|adjunct|preschool|childcare|babysitter"
+    r"|coach|trainer|fitness"
+    # Security / safety
+    r"|security\s+(guard|officer|patrol)|loss\s+prevention"
+    # Generic warehouse / production / agriculture
+    r"|machine\s+operator|production\s+(worker|associate|operator)|assembler|farmhand|crop"
+    r")\b",
+    re.I,
+)
+
+
+def _is_tech_title(title: str) -> bool:
+    """Return True when the job title looks like a tech role we want to keep.
+
+    Algorithm: any allow-list match wins; otherwise reject on non-tech match;
+    otherwise accept (ambiguous titles like "Project Manager" pass through and
+    are filtered downstream by role_category/skills if needed).
+    """
+    if not title:
+        return True   # let downstream validation reject empty titles
+    t = title.strip()
+    if _TECH_ALLOW_RE.search(t):
+        return True
+    if _NON_TECH_REJECT_RE.search(t):
+        return False
+    return True
 
 
 def _run_async(coro):
@@ -88,7 +187,7 @@ async def _scan_new_companies_async() -> dict:
                 Company.ats_type != None,
                 Company.ats_identifier != None,
             )
-        ).limit(500)
+        ).limit(5000)
         result = await db.execute(q)
         companies = list(result.scalars().all())
 
@@ -171,6 +270,13 @@ async def _scan_tier_async(tier: str) -> dict:
         "tier3": and_(Company.priority_score >= 20, Company.priority_score < 60),
     }
 
+    # Tier-scan dispatch limit per tick.  Was 2000 — bumped to 10000 so the
+    # long-tail of tier3 (which can reach 100k+ companies at full scale) gets
+    # a full sweep within a couple of beat cycles instead of crawling for days.
+    # The Redis broker holds these as reserved tasks; with worker concurrency
+    # 12+ a 10k batch drains in ~15 min at 8s/scan.
+    TIER_LIMIT = 10000
+
     async with AsyncSessionLocal() as db:
         q = select(Company).where(
             and_(
@@ -179,7 +285,7 @@ async def _scan_tier_async(tier: str) -> dict:
                 tier_filters.get(tier, Company.priority_score >= 20),
                 (Company.next_scan_at == None) | (Company.next_scan_at <= now),
             )
-        ).limit(2000)
+        ).limit(TIER_LIMIT)
         result = await db.execute(q)
         companies = list(result.scalars().all())
 
@@ -295,8 +401,17 @@ async def _scan_company_async(company_id: int) -> dict:
             _batch_fps: set[str] = set()
             scan_invalid = 0
 
+            n_filtered_nontech = 0
             for raw_job in conn_result.jobs:
                 raw_hash = hash_content(str(raw_job.raw_json))
+
+                # ── Tech-only filter ──────────────────────────────────────
+                # When INGEST_TECH_ONLY=1, drop obviously non-engineering
+                # titles (cashier, nurse, driver, recruiter, ...) before they
+                # consume Bronze storage and downstream enrichment cost.
+                if INGEST_TECH_ONLY and not _is_tech_title(raw_job.title or ""):
+                    n_filtered_nontech += 1
+                    continue
 
                 # Bronze storage (always record raw, even if we skip Silver)
                 bronze = BronzeRawJob(
@@ -425,22 +540,24 @@ async def _scan_company_async(company_id: int) -> dict:
             # Step 10: per-run summary line
             logger.info(
                 "scan_complete company=%s ats=%s "
-                "checked=%d | inserted=%d | duplicates=%d | invalid=%d | duration=%.2fs",
+                "checked=%d | inserted=%d | duplicates=%d | invalid=%d | non_tech_filtered=%d | duration=%.2fs",
                 company.name, company.ats_type,
                 len(conn_result.jobs),
                 new_count,
                 len(_batch_fps) - new_count,
                 scan_invalid,
+                n_filtered_nontech,
                 time.monotonic() - start,
             )
             return {
-                "company_id":    company_id,
-                "company_name":  company.name,
-                "jobs_fetched":  len(conn_result.jobs),
-                "jobs_new":      new_count,
-                "jobs_updated":  updated_count,
-                "jobs_invalid":  scan_invalid,
-                "duration_s":    round(time.monotonic() - start, 2),
+                "company_id":         company_id,
+                "company_name":       company.name,
+                "jobs_fetched":       len(conn_result.jobs),
+                "jobs_new":           new_count,
+                "jobs_updated":       updated_count,
+                "jobs_invalid":       scan_invalid,
+                "non_tech_filtered":  n_filtered_nontech,
+                "duration_s":         round(time.monotonic() - start, 2),
             }
 
         except Exception as e:

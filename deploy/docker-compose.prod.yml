@@ -97,7 +97,7 @@ services:
       target: runtime
     container_name: jj_celery_worker
     restart: always
-    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2 -Q default,scans,ai,reports
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=8 -Q default,scans,ai,reports
     environment:
       <<: *backend-env
       CELERY_WORKER: "1"
@@ -128,11 +128,10 @@ services:
       target: runtime
     container_name: jj_celery_beat
     restart: always
-    command: celery -A app.workers.celery_app beat --loglevel=info --schedule=/app/celerybeat-schedule
+    command: celery -A app.workers.celery_app beat --loglevel=info --schedule=/app/data/celerybeat-schedule
     environment:
       <<: *backend-env
     volumes:
-      - celerybeat_data:/app
       - backend_data:/app/data
       - ./logs/beat:/app/logs
     depends_on:
@@ -178,7 +177,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  celerybeat_data:
   backend_data:
   uploads_data:              # user-uploaded resumes
   backups_data:              # daily pg_dump archives (7-day retention)

@@ -507,30 +507,15 @@ _LEVER_SLUGS: list[str] = [
 # ── SmartRecruiters slugs ──────────────────────────────────────────────────────
 
 _SMARTRECRUITERS_SLUGS: list[str] = [
-    # Large Enterprises
-    "IKEA", "Aldi", "Lidl", "Volkswagen", "BMW",
-    "Mercedes-Benz", "Bosch", "Siemens",
-    "Philips", "Unilever", "Nestle", "Danone",
-    "LOreal", "LVMH", "Kering",
-    "McDonald's", "Yum", "Darden",
-    "Marriott", "Hilton", "IHG",
-    "Carnival", "RoyalCaribbean",
-    "Delta", "United", "American",
-    "FedEx", "UPS", "DHL",
-    "Walmart", "Target", "Costco",
-    "HomeDepot", "Lowes", "BestBuy",
-    "CVS", "Walgreens", "RiteAid",
-    "JPMorganChase", "BankOfAmerica", "WellsFargo",
-    "Citi", "GoldmanSachs", "MorganStanley",
-    "UnitedHealth", "Anthem", "Cigna",
-    "Johnson-Johnson", "Pfizer", "Merck",
-    "ExxonMobil", "Chevron", "Shell",
-    "Boeing", "Lockheed", "Raytheon",
-    "Caterpillar", "Deere", "Honeywell",
-    "3M", "GE", "Emerson",
-    "AT&T", "Verizon", "Comcast",
-    "Disney", "Warner", "Paramount",
-    # Tech
+    # NOTE: previously this list included EU retail/hospitality/healthcare
+    # conglomerates (IKEA, Aldi, Lidl, VW, BMW, Bosch, Siemens, McDonald's,
+    # Marriott, Walmart, Disney, banks, defence, etc.).  Each of those returned
+    # thousands of cashier / nurse / warehouse / operations jobs that crowded
+    # out US tech postings and made the analytics dashboard look like a
+    # general jobs board.  Trimmed to US-tech only — see git log if you want
+    # them back.
+    #
+    # Tech / SaaS
     "Salesforce", "Oracle", "SAP",
     "VMware", "Citrix", "Nutanix",
     "ServiceNow", "Workday",
@@ -542,10 +527,6 @@ _SMARTRECRUITERS_SLUGS: list[str] = [
     "Zendesk", "HubSpot", "Freshworks",
     "Zoom", "RingCentral", "8x8",
     "DocuSign", "Adobe", "Veeva",
-    # Staffing
-    "ManpowerGroup", "Adecco", "Randstad",
-    "RobertHalf", "Kforce", "SThree",
-    "Hays", "MichaelPage", "PageGroup",
 ]
 
 # ── Ashby slugs ───────────────────────────────────────────────────────────────

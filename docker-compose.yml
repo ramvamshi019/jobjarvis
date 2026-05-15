@@ -107,7 +107,7 @@ services:
     restart: unless-stopped
     command: >
       celery -A app.workers.celery_app worker
-      --loglevel=info --concurrency=4
+      --loglevel=info --concurrency=12
       -Q default,scans,ai,reports
       --without-gossip --without-mingle
     dns:
@@ -148,7 +148,11 @@ services:
       target: runtime
     container_name: jobjarvis_celery_beat
     restart: unless-stopped
-    command: celery -A app.workers.celery_app beat --loglevel=info --schedule=/app/celerybeat-schedule
+    # Store the celerybeat-schedule file inside /app/data — that volume is
+    # already owned by the appuser (created by the backend container's
+    # Dockerfile chown).  Avoids the EACCES that hits a fresh root-owned
+    # named volume after `docker compose down -v`.
+    command: celery -A app.workers.celery_app beat --loglevel=info --schedule=/app/data/celerybeat-schedule
     environment:
       <<: *backend-env
       CELERY_WORKER: "1"
@@ -157,7 +161,6 @@ services:
       - .env
     volumes:
       - ./backend/logs:/app/logs
-      - celerybeat_data:/app
       - backend_data:/app/data
     depends_on:
       postgres:
@@ -186,13 +189,17 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
       BACKEND_URL: http://backend:8000
+      # Force Next.js standalone server to bind on all interfaces.
+      # Default is the container's bridge IP, which makes the localhost
+      # healthcheck (and any internal wget probe) fail.
+      HOSTNAME: 0.0.0.0
     ports:
       - "3000:3000"
     depends_on:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider --tries=1 --timeout=3 http://localhost:3000/ || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider --tries=1 --timeout=3 http://127.0.0.1:3000/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -271,7 +278,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  celerybeat_data:
   backend_data:
   playwright_browsers:
   playwright_artifacts:
