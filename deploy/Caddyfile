@@ -1,16 +1,18 @@
-# Caddy reverse proxy.
+# Caddy reverse proxy with automatic HTTPS.
 #
-# NOTE: For DuckDNS domains we serve plain HTTP because DuckDNS nameservers
-# are too slow for Let's Encrypt validation (DNS lookups time out from
-# LE's secondary validators).  Once you move to a real domain (e.g. a
-# Namecheap $10/year .dev), change `http://{$DOMAIN}` back to `{$DOMAIN}`
-# and Caddy will provision HTTPS automatically.
+# We use Let's Encrypt's HTTP-01 challenge (not DNS-01) which only requires
+# port 80 to be reachable from outside.  This works on DuckDNS domains —
+# the prior commit assumed LE needed DNS-01 and locked us into plain HTTP,
+# but HTTP-01 has none of the DuckDNS-nameserver-latency issues.
+#
+# Caddy auto-provisions the cert on first start, auto-renews 30 days before
+# expiry, and redirects http→https.
 #
 # Routing:
 #   /api/*  → FastAPI backend container (port 8000)
 #   /*      → Next.js frontend container (port 3000)
 
-http://{$DOMAIN} {
+{$DOMAIN} {
     encode zstd gzip
 
     # Hide API docs in production — don't advertise the full API surface.
@@ -35,8 +37,9 @@ http://{$DOMAIN} {
         max_size 10MB
     }
 
-    # Security headers (HSTS removed because we're on HTTP for now)
+    # Security headers (HSTS now safe since we serve HTTPS)
     header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
         X-Content-Type-Options    "nosniff"
         X-Frame-Options           "SAMEORIGIN"
         Referrer-Policy           "strict-origin-when-cross-origin"
