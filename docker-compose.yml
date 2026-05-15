@@ -107,7 +107,7 @@ services:
     restart: unless-stopped
     command: >
       celery -A app.workers.celery_app worker
-      --loglevel=info --concurrency=12
+      --loglevel=info --concurrency=12 --max-tasks-per-child=200
       -Q default,scans,ai,reports
       --without-gossip --without-mingle
     dns:

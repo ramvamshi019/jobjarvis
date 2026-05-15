@@ -97,7 +97,11 @@ services:
       target: runtime
     container_name: jj_celery_worker
     restart: always
-    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4 -Q default,scans,ai,reports
+    # --max-tasks-per-child=200: each worker fork respawns after 200 tasks,
+    # releasing accumulated Python heap (sentence-transformers cache, pandas
+    # DataFrames, etc.).  Without this, long-running workers grow ~50MB/hour
+    # and OOM after a day on the 8GB box.  Respawn cost is ~5 sec — trivial.
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4 --max-tasks-per-child=200 -Q default,scans,ai,reports
     environment:
       <<: *backend-env
       CELERY_WORKER: "1"

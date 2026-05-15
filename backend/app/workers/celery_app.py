@@ -190,11 +190,13 @@ celery_app.conf.update(
 
         # ── Company discovery (fully automated) ───────────────────────────
         # ATS directory probe: every hour — grows company list automatically.
-        # Was every 4h.  Each pass probes ~1k known slugs across all ATSes;
-        # cheap when most are already in DB (de-duped early).
+        # Scheduled at minute :45 to avoid stacking on top of the AI-discovery
+        # task (minute :25) and Workday slug fixer (minute :20).  Spreading
+        # heavy hourly tasks across minutes is the single biggest reason the
+        # VM stays calm on a 2-vCPU box.
         "ingest-ats-directories": {
             "task": "app.workers.ats_directory_tasks.ingest_ats_directories",
-            "schedule": crontab(minute=0, hour="*/1"),
+            "schedule": crontab(minute=45, hour="*/1"),
         },
         # Quick slug-guess discovery: every 30 min (was every 2 hours).
         "discover-companies-quick": {
