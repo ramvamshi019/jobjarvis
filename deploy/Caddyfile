@@ -1,19 +1,21 @@
-# Caddy reverse proxy.
+# Caddy reverse proxy with automatic HTTPS via Let's Encrypt HTTP-01 challenge.
 #
-# Plain HTTP serving — Caddy's auto-HTTPS provisioning needs Let's Encrypt
-# to reach this server on port 80 for the HTTP-01 challenge, and even that
-# occasionally hangs on first boot.  HTTP keeps the deploy bulletproof.
-# When you move to a real domain, switch the site-block back to `{$DOMAIN}`
-# (no `http://` prefix) and Caddy will provision HTTPS automatically.
+# Requirements (all already satisfied on this stack):
+#   - Port 80 reachable from outside (GCP firewall allows it)
+#   - {$DOMAIN} resolves to this server (DuckDNS A record)
+#   - VM has enough RAM to not OOM during cert provisioning (≥4 GB)
+#
+# Caddy provisions the cert on first start (~30 sec), auto-renews 30 days
+# before expiry, and redirects all http → https.
 #
 # Routing:
-#   /api/*  → FastAPI backend container (port 8000)
-#   /*      → Next.js frontend container (port 3000)
+#   /api/*  → FastAPI backend (port 8000)
+#   /*      → Next.js frontend (port 3000)
 
-http://{$DOMAIN} {
+{$DOMAIN} {
     encode zstd gzip
 
-    # Hide API docs in production — don't advertise the full API surface.
+    # Hide API docs in production
     @docs path /docs /openapi.json /redoc
     respond @docs 404
 
@@ -33,8 +35,9 @@ http://{$DOMAIN} {
         max_size 10MB
     }
 
-    # Security headers (HSTS removed because we're on HTTP for now)
+    # Security headers (HSTS now safe — Caddy auto-redirects http→https)
     header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
         X-Content-Type-Options    "nosniff"
         X-Frame-Options           "SAMEORIGIN"
         Referrer-Policy           "strict-origin-when-cross-origin"
