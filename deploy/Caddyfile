@@ -1,23 +1,19 @@
-# Caddy reverse proxy with automatic HTTPS.
+# Caddy reverse proxy.
 #
-# We use Let's Encrypt's HTTP-01 challenge (not DNS-01) which only requires
-# port 80 to be reachable from outside.  This works on DuckDNS domains —
-# the prior commit assumed LE needed DNS-01 and locked us into plain HTTP,
-# but HTTP-01 has none of the DuckDNS-nameserver-latency issues.
-#
-# Caddy auto-provisions the cert on first start, auto-renews 30 days before
-# expiry, and redirects http→https.
+# Plain HTTP serving — Caddy's auto-HTTPS provisioning needs Let's Encrypt
+# to reach this server on port 80 for the HTTP-01 challenge, and even that
+# occasionally hangs on first boot.  HTTP keeps the deploy bulletproof.
+# When you move to a real domain, switch the site-block back to `{$DOMAIN}`
+# (no `http://` prefix) and Caddy will provision HTTPS automatically.
 #
 # Routing:
 #   /api/*  → FastAPI backend container (port 8000)
 #   /*      → Next.js frontend container (port 3000)
 
-{$DOMAIN} {
+http://{$DOMAIN} {
     encode zstd gzip
 
     # Hide API docs in production — don't advertise the full API surface.
-    # (To temporarily re-enable for debugging, remove this stanza and
-    # restart caddy: docker compose restart caddy)
     @docs path /docs /openapi.json /redoc
     respond @docs 404
 
@@ -37,9 +33,8 @@
         max_size 10MB
     }
 
-    # Security headers (HSTS now safe since we serve HTTPS)
+    # Security headers (HSTS removed because we're on HTTP for now)
     header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains"
         X-Content-Type-Options    "nosniff"
         X-Frame-Options           "SAMEORIGIN"
         Referrer-Policy           "strict-origin-when-cross-origin"
