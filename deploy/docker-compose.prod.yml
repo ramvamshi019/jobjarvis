@@ -97,7 +97,7 @@ services:
       target: runtime
     container_name: jj_celery_worker
     restart: always
-    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=8 -Q default,scans,ai,reports
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4 -Q default,scans,ai,reports
     environment:
       <<: *backend-env
       CELERY_WORKER: "1"

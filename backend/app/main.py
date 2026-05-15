@@ -128,18 +128,23 @@ async def lifespan(app: FastAPI):
                     cur = (await db.execute(_sel(_func.count(_C.id)).where(_C.active == True))).scalar() or 0
 
                 # Stage A: bulk sources (HN + YC + awesome + Common Crawl)
+                # 5-minute delay so the VM finishes booting + Caddy provisions
+                # cert + worker forks finish loading ML models BEFORE we pile
+                # on 1000s of scan dispatches.  Prevents the SSH-killing CPU
+                # spike we kept hitting on smaller machines.
                 if cur < target_bulk:
                     from app.workers.bulk_discovery_tasks import bootstrap_all_sources_task
-                    bootstrap_all_sources_task.apply_async(countdown=30)
+                    bootstrap_all_sources_task.apply_async(countdown=300)
                     logger.info("startup.bootstrap_bulk_queued",
-                                companies=cur, target=target_bulk, delay_seconds=30)
+                                companies=cur, target=target_bulk, delay_seconds=300)
 
                 # Stage B: curated tech sources (Levels + HF + CNCF + ...)
+                # 10-minute delay — runs AFTER Stage A has had time to drain.
                 if cur < target_tech:
                     from app.workers.tech_company_sources import discover_all_tech_sources_task
-                    discover_all_tech_sources_task.apply_async(countdown=120)
+                    discover_all_tech_sources_task.apply_async(countdown=600)
                     logger.info("startup.bootstrap_tech_queued",
-                                companies=cur, target=target_tech, delay_seconds=120)
+                                companies=cur, target=target_tech, delay_seconds=600)
 
                 if cur >= target_tech:
                     logger.info("startup.bootstrap_skipped_corpus_full",
