@@ -563,9 +563,15 @@ async def _upsert_jobs(jobs: list[dict], source: str) -> int:
                     continue
                 seen_pairs_in_batch.add(pair)
 
-            # Compute freshness
+            # Compute freshness — keep the numeric score from the local
+            # heuristic, but the *label* must use the canonical keys the
+            # frontend understands (new_last_hour / new_today / stale / ...).
+            # Base it on the real posting date, falling back to ingest time
+            # when the source gives none.
+            from app.services.freshness import compute_freshness
             posted_at = j.get("posted_at")
-            freshness_score, freshness_label = _compute_freshness(posted_at, now)
+            freshness_score, _ = _compute_freshness(posted_at, now)
+            freshness_label = compute_freshness(posted_at or now)
 
             db.add(Job(
                 company_id        = company_id,

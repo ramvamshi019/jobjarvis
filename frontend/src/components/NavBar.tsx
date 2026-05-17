@@ -48,6 +48,7 @@ export default function NavBar() {
           {/* Nav links */}
           <div className="flex items-center gap-1">
             <NavLink href="/" label="Jobs" current={active("/_jobs") || pathname === "/"} />
+            <NavLink href="/usa" label="USA" current={active("/usa")} />
             {user && (
               <NavLink href="/matches" label="My Matches" current={active("/matches")} />
             )}

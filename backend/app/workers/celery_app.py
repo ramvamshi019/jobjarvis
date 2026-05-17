@@ -157,6 +157,14 @@ celery_app.conf.update(
             "schedule": crontab(minute=15, hour="*/3"),
             "args": ("tier3",),
         },
+        # Tier4 (priority < 20): every 6 h — rescues the long tail so a
+        # company (often a real tech company that just hasn't been scanned
+        # yet) is never permanently invisible to the scanner.
+        "scan-tier4-companies": {
+            "task": "app.workers.scan_tasks.scan_tier_companies",
+            "schedule": crontab(minute=45, hour="*/6"),
+            "args": ("tier4",),
+        },
         # Newly discovered companies: scan every 30 min regardless of tier
         "scan-new-companies": {
             "task": "app.workers.scan_tasks.scan_new_companies",
@@ -235,9 +243,13 @@ celery_app.conf.update(
         # ~45 themes (industries, cities, stages, tech-skills) and suggests
         # 40-60 hiring US companies.  Each is probed for ATS + upserted.
         # At ~$0.015 per call, ~$11/month total cost.
+        # Tech-targeted company discovery — every 30 min (was hourly). This
+        # is the highest-quality tech source (Claude picks hiring US tech
+        # companies); doubling cadence ≈ doubles new tech companies/day.
+        # Cost ≈ doubles to ~$22/month.
         "ai-discover-companies": {
             "task": "app.workers.ai_company_discovery.discover_via_ai",
-            "schedule": crontab(minute=25, hour="*/1"),
+            "schedule": crontab(minute="25,55"),
         },
         # ATS auto-promoter — picks 50 ats=unknown companies every 30 min,
         # fetches their careers page, looks for embedded Greenhouse / Lever /

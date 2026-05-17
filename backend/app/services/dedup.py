@@ -84,6 +84,17 @@ class DedupEngine:
             # Update raw_hash to detect description changes
             if job_data.get("raw_hash") and job_data["raw_hash"] != existing.raw_hash:
                 existing.raw_hash = job_data["raw_hash"]
+            # Self-heal freshness: if the source now gives us a real posting
+            # date that we didn't have before (e.g. the Workday connector
+            # learned to parse it), backfill it and recompute a stable,
+            # posting-date-based label. We only touch rows that lacked a
+            # posted_at so we never churn a known date or relabel a
+            # date-less job as perpetually "new".
+            incoming_posted = job_data.get("posted_at")
+            if incoming_posted and not existing.posted_at:
+                from app.services.freshness import compute_freshness
+                existing.posted_at = incoming_posted
+                existing.freshness_label = compute_freshness(incoming_posted)
             await db.flush()
             return existing, False
 
