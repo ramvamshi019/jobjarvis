@@ -173,6 +173,16 @@ celery_app.conf.update(
             "schedule": crontab(minute=8, hour="*/1"),
             "args": ("tier3",),
         },
+        # Tier4 (priority < 20): once daily at 01:53 UTC — a deliberately
+        # quiet, collision-free slot (no other heavy task at this hour; :53
+        # avoids the */5, tier2 2/17/32/47, :08, :20, :45 spread). Rescues
+        # the long tail of never-/rarely-scanned companies (often real tech
+        # companies that just never got a slot) without adding daytime load.
+        "scan-tier4-companies": {
+            "task": "app.workers.scan_tasks.scan_tier_companies",
+            "schedule": crontab(hour=1, minute=53),
+            "args": ("tier4",),
+        },
         # Newly discovered companies: scan every 5 min.
         # Tight cadence here means a company discovered at minute :01 has
         # its jobs ingested by :06 at the latest — important for keeping

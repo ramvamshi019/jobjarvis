@@ -55,7 +55,8 @@ ROLE_PATTERNS: list[tuple[str, list[str]]] = [
 
 RELEVANT_ROLES = {
     "AI Engineer", "ML Engineer", "Data Engineer", "Data Platform Engineer",
-    "MLOps Engineer", "Analytics Engineer", "Backend Engineer", "QA/SDET"
+    "MLOps Engineer", "Analytics Engineer", "Backend Engineer", "QA/SDET",
+    "Software Engineer",
 }
 
 RELEVANT_KEYWORDS = re.compile(

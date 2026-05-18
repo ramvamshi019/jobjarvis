@@ -4,6 +4,7 @@ GET /api/jobs/search
 """
 from __future__ import annotations
 
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -129,15 +130,36 @@ async def search_jobs(
     filters = [Job.active == True]
 
     # ── Keyword search ─────────────────────────────────────────────────────
+    # Tokenized: every word in the query must appear somewhere in the title
+    # (any order), so "data engineer" also matches "Senior Data Platform
+    # Engineer". The whole phrase still matches a company name. Falls back to
+    # plain substring for single short tokens.
     if q and q.strip():
-        kw = f"%{q.strip()}%"
-        filters.append(
-            or_(
-                Job.title.ilike(kw),
-                Job.company_name.ilike(kw),
-                Job.normalized_title.ilike(kw),
+        raw = q.strip()
+        tokens = [t for t in re.split(r"\s+", raw) if len(t) >= 2]
+        if len(tokens) >= 2:
+            token_clauses = [
+                or_(
+                    Job.title.ilike(f"%{tok}%"),
+                    Job.normalized_title.ilike(f"%{tok}%"),
+                )
+                for tok in tokens
+            ]
+            filters.append(
+                or_(
+                    and_(*token_clauses),
+                    Job.company_name.ilike(f"%{raw}%"),
+                )
             )
-        )
+        else:
+            kw = f"%{raw}%"
+            filters.append(
+                or_(
+                    Job.title.ilike(kw),
+                    Job.company_name.ilike(kw),
+                    Job.normalized_title.ilike(kw),
+                )
+            )
 
     # ── Location filter ────────────────────────────────────────────────────
     if location and location.strip():
@@ -170,15 +192,27 @@ async def search_jobs(
         filters.append(Job.remote_type == remote.lower())
 
     # ── Role category filter ───────────────────────────────────────────────
+    # role_category is sparsely/under-populated by the classifier, so a chip
+    # like "Data Engineer" would only surface a handful of jobs if we gated
+    # on role_category alone. Fall back to a title match so the UI role chips
+    # reflect the true volume even for un-classified rows.
     if role and role.strip():
-        filters.append(Job.role_category.ilike(f"%{role.strip()}%"))
+        r = role.strip()
+        filters.append(
+            or_(
+                Job.role_category.ilike(f"%{r}%"),
+                Job.title.ilike(f"%{r}%"),
+                Job.normalized_title.ilike(f"%{r}%"),
+            )
+        )
 
     # ── Freshness filter ───────────────────────────────────────────────────
-    # A job passes if EITHER it was posted recently OR we just discovered it
-    # recently.  Many ATS systems report a months-old posted_at on a role
-    # that's still active and being re-listed — gating on posted_at alone
-    # would hide today's freshly-ingested jobs.  first_seen_at is the
-    # authoritative "newness" signal for the user's feed.
+    # Intentionally generous: a job passes if we discovered it recently OR it
+    # was posted recently. Gating strictly on posted_at would collapse the
+    # feed, because most sources report a stale/absent posted_at on roles
+    # that are still active and being re-listed. Label honesty (showing the
+    # real "Older" age on the card) is handled separately at ingest via
+    # freshness_label, so the feed can stay full without lying about age.
     def _freshness_filter(cutoff):
         return or_(
             Job.first_seen_at >= cutoff,

@@ -201,49 +201,78 @@ async def _scan_new_companies_async() -> dict:
 
 
 async def _promote_active_companies_async() -> dict:
-    """Update priority_score for all companies based on hiring activity."""
+    """Re-prioritise companies by *tech-job* volume (not raw job count).
+
+    Ranking purely on jobs_found_count let a hospital Workday tenant posting
+    500 nurse roles ride tier1 while a lean startup posting 5 engineering
+    roles starved in tier3/tier4. We now score on how many *tech* jobs
+    (role_category in RELEVANT_ROLES) a company produced recently, cap
+    high-volume non-tech employers out of the fast tiers, and protect
+    never-scanned companies so new tech companies get a fair chance before
+    they can decay into the un-scanned pool. Load-neutral: total companies
+    scanned per tick is still bounded by the tier limits — this only changes
+    *which* companies the existing budget is spent on.
+    """
     from app.database import AsyncSessionLocal
     from app.models.company import Company
-    from sqlalchemy import select, update
+    from app.models.job import Job
+    from app.ai.role_classifier import RELEVANT_ROLES
+    from sqlalchemy import select, func, and_
 
     now = datetime.now(timezone.utc)
+    cutoff30 = now - timedelta(days=30)
+    cutoff14 = now - timedelta(days=14)
+    tech_roles = list(RELEVANT_ROLES)
 
-    promoted = 0
-    demoted = 0
+    promoted = demoted = capped = protected = 0
 
     async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(Company).where(Company.active == True)
+        agg = await db.execute(
+            select(
+                Job.company_id,
+                func.count().filter(Job.role_category.in_(tech_roles)).label("tech30"),
+                func.count()
+                    .filter(
+                        and_(
+                            Job.role_category.in_(tech_roles),
+                            Job.first_seen_at >= cutoff14,
+                        )
+                    ).label("tech14"),
+                func.count().label("all30"),
+            )
+            .where(and_(Job.active == True, Job.first_seen_at >= cutoff30))
+            .group_by(Job.company_id)
         )
+        stats = {r.company_id: (r.tech30, r.tech14, r.all30) for r in agg.all()}
+
+        result = await db.execute(select(Company).where(Company.active == True))
         companies = list(result.scalars().all())
 
         for company in companies:
             old_score = company.priority_score
+            tech30, tech14, all30 = stats.get(company.id, (0, 0, 0))
+            never_scanned = company.last_success_at is None
 
-            # --- Promotion logic ---
-            # Companies that posted a job recently → boost their score
-            if company.last_job_found_at:
-                days_since_job = (now - company.last_job_found_at).days
-                if days_since_job <= 7 and company.jobs_found_count >= 20:
-                    # Very active this week → tier1
-                    company.priority_score = max(company.priority_score, 90)
-                elif days_since_job <= 14 and company.jobs_found_count >= 5:
-                    # Active past 2 weeks → at least tier2
-                    company.priority_score = max(company.priority_score, 60)
-                elif days_since_job <= 30:
-                    # Posted recently → at least tier3
-                    company.priority_score = max(company.priority_score, 20)
-                else:
-                    # No recent jobs (>30 days) → gently demote
-                    company.priority_score = max(10, company.priority_score - 5)
-            else:
-                # Never found a job → low priority but keep alive for discovery
-                if company.jobs_found_count == 0 and company.failure_count > 10:
-                    company.priority_score = max(5, company.priority_score - 10)
-
-            # High-volume companies always stay at tier1
-            if company.jobs_found_count >= 100:
+            if tech14 >= 10 or tech30 >= 100:
                 company.priority_score = max(company.priority_score, 90)
+            elif tech30 >= 10:
+                company.priority_score = max(company.priority_score, 60)
+            elif tech30 >= 1:
+                company.priority_score = max(company.priority_score, 35)
+            elif tech30 == 0 and all30 >= 50:
+                # High-volume but zero tech (hospital/retail tenant) → evict
+                # from the fast tiers so it stops hogging the scan budget.
+                company.priority_score = min(company.priority_score, 30)
+                capped += 1
+            elif never_scanned:
+                # Never successfully scanned → protect so tier4-rescue +
+                # scan-new can prove it before it can be demoted away.
+                company.priority_score = max(company.priority_score, 25)
+                protected += 1
+            else:
+                # Genuinely dead (scanned, no tech, low volume) → decay, but
+                # never to 0 so the tier4 sweep can re-check it occasionally.
+                company.priority_score = max(5, company.priority_score - 10)
 
             if company.priority_score > old_score:
                 promoted += 1
@@ -252,9 +281,15 @@ async def _promote_active_companies_async() -> dict:
 
         await db.commit()
 
-    logger.info("promote_active_companies_done", promoted=promoted, demoted=demoted,
-                total=len(companies))
-    return {"promoted": promoted, "demoted": demoted, "total": len(companies)}
+    logger.info(
+        "promote_active_companies_done",
+        promoted=promoted, demoted=demoted, capped=capped,
+        protected=protected, total=len(companies),
+    )
+    return {
+        "promoted": promoted, "demoted": demoted, "capped": capped,
+        "protected": protected, "total": len(companies),
+    }
 
 
 async def _scan_tier_async(tier: str) -> dict:
@@ -268,6 +303,7 @@ async def _scan_tier_async(tier: str) -> dict:
         "tier1": Company.priority_score >= 90,
         "tier2": and_(Company.priority_score >= 60, Company.priority_score < 90),
         "tier3": and_(Company.priority_score >= 20, Company.priority_score < 60),
+        "tier4": Company.priority_score < 20,
     }
 
     # Tier-scan dispatch limit per tick.  Was 2000 — bumped to 10000 so the
@@ -278,14 +314,25 @@ async def _scan_tier_async(tier: str) -> dict:
     TIER_LIMIT = 10000
 
     async with AsyncSessionLocal() as db:
-        q = select(Company).where(
-            and_(
-                Company.active == True,
-                Company.is_blocklisted == False,
-                tier_filters.get(tier, Company.priority_score >= 20),
-                (Company.next_scan_at == None) | (Company.next_scan_at <= now),
+        q = (
+            select(Company)
+            .where(
+                and_(
+                    Company.active == True,
+                    Company.is_blocklisted == False,
+                    tier_filters.get(tier, Company.priority_score >= 20),
+                    (Company.next_scan_at == None) | (Company.next_scan_at <= now),
+                )
             )
-        ).limit(TIER_LIMIT)
+            # Oldest-due first (never-scanned NULLs first). Without this
+            # ORDER BY Postgres returned an arbitrary slice each tick, so the
+            # same companies were re-scanned while the rest starved forever.
+            .order_by(
+                Company.next_scan_at.asc().nulls_first(),
+                Company.priority_score.desc(),
+            )
+            .limit(TIER_LIMIT)
+        )
         result = await db.execute(q)
         companies = list(result.scalars().all())
 
@@ -458,7 +505,13 @@ async def _scan_company_async(company_id: int) -> dict:
                     domain, company.ats_type
                 )
                 work_auth = detect_work_auth(raw_job.description or "", raw_job.title)
-                freshness = compute_freshness(datetime.now(timezone.utc))
+                # Base freshness on the real posting date when the source
+                # provides one; fall back to scrape time only when unknown.
+                # Otherwise a months-old listing we just discovered would be
+                # mislabeled "new".
+                freshness = compute_freshness(
+                    raw_job.posted_at or datetime.now(timezone.utc)
+                )
 
                 # Step 9: compute and store data quality score
                 dqs = compute_data_quality_score(

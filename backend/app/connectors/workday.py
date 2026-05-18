@@ -1,6 +1,8 @@
 """Workday ATS connector — paginates through all jobs via the JSON API."""
 import asyncio
+import re
 import time
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from urllib.parse import urljoin
 
@@ -113,6 +115,45 @@ class WorkdayConnector(BaseConnector):
                 response_time_ms=elapsed,
             )
 
+    @staticmethod
+    def _parse_posted_at(raw: dict) -> Optional[datetime]:
+        """
+        Derive an approximate posting date.
+
+        Workday's cxs list endpoint only exposes a human-readable ``postedOn``
+        string ("Posted Today", "Posted Yesterday", "Posted 5 Days Ago",
+        "Posted 30+ Days Ago"). Some tenants also include an ISO date in
+        ``startDate``/``postedOnDate``. We prefer the ISO field when present
+        and otherwise approximate from the relative phrase so freshness
+        reflects the real age instead of our scrape time.
+        """
+        for key in ("startDate", "postedOnDate", "postedDate"):
+            val = raw.get(key)
+            if isinstance(val, str) and val:
+                try:
+                    return datetime.fromisoformat(
+                        val.replace("Z", "+00:00")
+                    ).astimezone(timezone.utc)
+                except ValueError:
+                    pass
+
+        phrase = (raw.get("postedOn") or "").strip().lower()
+        if not phrase:
+            return None
+
+        now = datetime.now(timezone.utc)
+        if "today" in phrase:
+            return now
+        if "yesterday" in phrase:
+            return now - timedelta(days=1)
+        m = re.search(r"(\d+)\s*\+?\s*day", phrase)
+        if m:
+            return now - timedelta(days=int(m.group(1)))
+        m = re.search(r"(\d+)\s*\+?\s*month", phrase)
+        if m:
+            return now - timedelta(days=int(m.group(1)) * 30)
+        return None
+
     def _parse_job(self, raw: dict, ats_identifier: str) -> Optional[RawJob]:
         title = raw.get("title", raw.get("jobPostingTitle", ""))
         if not title:
@@ -143,6 +184,7 @@ class WorkdayConnector(BaseConnector):
             location=location,
             job_url=job_url,
             apply_url=job_url,
+            posted_at=self._parse_posted_at(raw),
             source="workday",
             raw_json=raw,
         )
