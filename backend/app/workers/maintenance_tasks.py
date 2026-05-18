@@ -42,7 +42,7 @@ from app.workers.celery_app import celery_app
 logger = structlog.get_logger(__name__)
 
 BRONZE_RETENTION_DAYS  = int(os.environ.get("BRONZE_RETENTION_DAYS", "7"))
-COMPANY_DECAY_DAYS     = int(os.environ.get("COMPANY_DECAY_DAYS",    "180"))
+COMPANY_DECAY_DAYS     = int(os.environ.get("COMPANY_DECAY_DAYS",    "120"))
 
 
 def _run_async(coro):

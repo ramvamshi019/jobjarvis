@@ -260,9 +260,10 @@ async def _promote_active_companies_async() -> dict:
             elif tech30 >= 1:
                 company.priority_score = max(company.priority_score, 35)
             elif tech30 == 0 and all30 >= 50:
-                # High-volume but zero tech (hospital/retail tenant) → evict
-                # from the fast tiers so it stops hogging the scan budget.
-                company.priority_score = min(company.priority_score, 30)
+                # High-volume but zero tech (hospital/retail tenant) → push
+                # below tier3 (<20 ⇒ tier4) so it only gets the once-daily
+                # sweep and the hourly+ budget stays on tech companies.
+                company.priority_score = min(company.priority_score, 15)
                 capped += 1
             elif never_scanned:
                 # Never successfully scanned → protect so tier4-rescue +
@@ -577,8 +578,22 @@ async def _scan_company_async(company_id: int) -> dict:
             company.last_checked_at = datetime.now(timezone.utc)
             company.last_success_at = datetime.now(timezone.utc)
             company.consecutive_failures = 0
+            # Tier-based rescan interval: keep top companies fresh, but
+            # re-scan the long tail far less often so the limited daily scan
+            # budget covers many more *unique* companies (breadth > re-scan
+            # frequency). max() so a longer per-company override still wins.
+            _base = company.scan_frequency_minutes  # default 360 (6h)
+            _ps = company.priority_score
+            if _ps >= 90:
+                _interval = _base            # ~6h  — tier1, stay fresh
+            elif _ps >= 60:
+                _interval = max(_base, 720)  # ~12h — tier2
+            elif _ps >= 20:
+                _interval = max(_base, 1440) # ~24h — tier3 (the bulk)
+            else:
+                _interval = max(_base, 2880) # ~48h — tier4 long tail
             company.next_scan_at = datetime.now(timezone.utc) + timedelta(
-                minutes=company.scan_frequency_minutes
+                minutes=_interval
             )
 
             scan.status = "completed"
