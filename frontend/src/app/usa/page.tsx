@@ -20,6 +20,13 @@ const FRESHNESS: { value: string; label: string }[] = [
   { value: "last_7_days", label: "Last 7 days" },
 ];
 
+const EXPERIENCE: { value: string; label: string }[] = [
+  { value: "", label: "All levels" },
+  { value: "entry", label: "Entry level" },
+  { value: "mid", label: "Mid level" },
+  { value: "senior", label: "Senior" },
+];
+
 const ROLES = [
   "",
   "Software Engineer",
@@ -41,19 +48,21 @@ export default function UsaPage() {
   const [activeId, setActiveId] = useState<number | null>(null);
   const [freshness, setFreshness] = useState("");
   const [role, setRole] = useState("");
+  const [experience, setExperience] = useState("");
 
-  // country is always pinned to US; recency + role layer on top.
+  // country is always pinned to US; recency + role + level layer on top.
   const apply = useCallback(
     (next: Partial<JobFilters>) => {
       const f: JobFilters = {
         country: "US",
         freshness: next.freshness ?? freshness,
         role: next.role ?? role,
+        experience: next.experience ?? experience,
       };
       updateFilters(f);
       setActiveId(null);
     },
-    [freshness, role, updateFilters],
+    [freshness, role, experience, updateFilters],
   );
 
   const onFreshness = (v: string) => {
@@ -63,6 +72,10 @@ export default function UsaPage() {
   const onRole = (v: string) => {
     setRole(v);
     apply({ role: v });
+  };
+  const onExperience = (v: string) => {
+    setExperience(v);
+    apply({ experience: v });
   };
 
   return (
@@ -106,8 +119,36 @@ export default function UsaPage() {
             </select>
           </div>
 
+          {/* Experience-level chips */}
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-400 mr-1">
+              Level
+            </span>
+            {EXPERIENCE.map((opt) => {
+              const isActive = experience === opt.value;
+              return (
+                <button
+                  key={opt.value || "all"}
+                  type="button"
+                  onClick={() => onExperience(opt.value)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium border
+                             transition-colors ${
+                               isActive
+                                 ? "bg-brand text-white border-brand"
+                                 : "bg-white text-gray-600 border-gray-200 hover:bg-blue-50"
+                             }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+
           {/* Recency chips */}
-          <div className="flex flex-wrap gap-2 mt-3">
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-400 mr-1">
+              When
+            </span>
             {FRESHNESS.map((opt) => {
               const isActive = freshness === opt.value;
               return (
