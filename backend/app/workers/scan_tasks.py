@@ -401,13 +401,15 @@ async def _scan_company_async(company_id: int) -> dict:
                 return {"company_id": company_id, "error": "unknown_ats"}
 
             async with connector_cls() as connector:
-                # Cheap first pass for the backlog: never-scanned or tier4
-                # companies get a page-1-only scan so the 67k never-scanned
-                # drains fast; proven/active companies still get full depth.
-                connector.shallow = (
-                    company.last_success_at is None
-                    or company.priority_score < 20
-                )
+                # Shallow (page-1 only) by DEFAULT so the whole ~74k corpus
+                # is coverable daily on the 2-vCPU box. Full-depth pagination
+                # is reserved for proven tech companies — tier1/tier2
+                # (priority >= 60), which tech-aware promotion only grants to
+                # companies actually posting tech jobs. Everyone else (the
+                # ~70k tier3/tier4 bulk) gets the ~10-50x cheaper page-1 scan;
+                # if one starts posting real tech jobs it gets promoted to
+                # >=60 and graduates to full-depth automatically.
+                connector.shallow = company.priority_score < 60
                 conn_result = await connector.fetch_jobs(company_id, company.ats_identifier)
 
             # Log fetch
