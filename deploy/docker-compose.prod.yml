@@ -141,6 +141,10 @@ services:
     environment:
       <<: *backend-env
       CELERY_WORKER: "1"
+      # appuser's $HOME isn't writable; point tldextract at /tmp so it caches
+      # the public-suffix list instead of re-fetching it over HTTP on every
+      # fork respawn (max-tasks-per-child=200 ⇒ frequent respawns here).
+      TLDEXTRACT_CACHE: /tmp/tldextract
     volumes:
       - backend_data:/app/data
       - ./logs/worker_scans:/app/logs
