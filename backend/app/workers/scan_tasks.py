@@ -140,7 +140,7 @@ def scan_tier_companies(self, tier: str = "tier1"):
 
 
 @celery_app.task(bind=True, name="app.workers.scan_tasks.run_company_scan_task",
-                 max_retries=3, soft_time_limit=120)
+                 max_retries=3, soft_time_limit=300)
 def run_company_scan_task(self, company_id: int):
     """Scan a single company."""
     return _run_async(_scan_company_async(company_id))

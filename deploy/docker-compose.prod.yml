@@ -137,7 +137,7 @@ services:
       target: runtime
     container_name: jj_celery_worker_scans
     restart: always
-    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=28 --max-tasks-per-child=200 -Q company_scans -n cscan@%h
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=8 --max-tasks-per-child=200 -Q company_scans -n cscan@%h
     environment:
       <<: *backend-env
       CELERY_WORKER: "1"
