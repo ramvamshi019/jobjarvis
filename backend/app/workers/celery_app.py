@@ -208,21 +208,25 @@ celery_app.conf.update(
         # task (minute :25) and Workday slug fixer (minute :20).  Spreading
         # heavy hourly tasks across minutes is the single biggest reason the
         # VM stays calm on a 2-vCPU box.
+        # THROTTLED so discovery intake no longer outruns scan throughput
+        # (the cause of the 67k never-scanned backlog). Every 6h instead of
+        # hourly.
         "ingest-ats-directories": {
             "task": "app.workers.ats_directory_tasks.ingest_ats_directories",
-            "schedule": crontab(minute=45, hour="*/1"),
+            "schedule": crontab(minute=45, hour="*/6"),
         },
-        # Quick slug-guess discovery: every 30 min (was every 2 hours).
+        # Quick slug-guess discovery: throttled to every 3h (was 30 min).
         "discover-companies-quick": {
             "task": "app.workers.discovery_tasks.discover_companies_quick",
-            "schedule": crontab(minute="*/30"),
+            "schedule": crontab(minute=51, hour="*/3"),
         },
-        # Full deep discovery: nightly at 3:00 UTC (probes 48k+ candidates).
-        # Was 3×/week — bumped to nightly to accelerate corpus bootstrap.
-        # Idempotent: candidates already in DB are skipped, so churn is cheap.
+        # Full deep discovery (probes 48k+ candidates): weekly Sunday 3:00
+        # UTC (was nightly). This is the biggest intake firehose; weekly is
+        # plenty once the corpus is bootstrapped and lets the scanner catch
+        # up. Idempotent — already-known candidates are skipped.
         "discover-companies-full": {
             "task": "app.workers.discovery_tasks.discover_companies_task",
-            "schedule": crontab(hour=3, minute=0),
+            "schedule": crontab(hour=3, minute=0, day_of_week=0),
         },
 
         # ── Bulk one-shot sources (wrap standalone scripts) ──────────────

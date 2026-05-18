@@ -59,6 +59,11 @@ class BaseConnector(ABC):
     """Abstract base for all ATS connectors."""
 
     ats_type: str = "unknown"
+    # When True, paginating connectors fetch only the first page — a cheap
+    # first-pass scan for never-/rarely-scanned companies so the backlog
+    # drains fast. Single-call connectors ignore it. Set per-scan by the
+    # dispatcher; default off so normal scans stay full-depth.
+    shallow: bool = False
     DEFAULT_TIMEOUT = settings.SCAN_DEFAULT_TIMEOUT_SECONDS
     MAX_RETRIES = settings.SCAN_MAX_RETRIES
     BASE_DELAY = settings.SCAN_BASE_RETRY_DELAY

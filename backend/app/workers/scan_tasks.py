@@ -401,6 +401,13 @@ async def _scan_company_async(company_id: int) -> dict:
                 return {"company_id": company_id, "error": "unknown_ats"}
 
             async with connector_cls() as connector:
+                # Cheap first pass for the backlog: never-scanned or tier4
+                # companies get a page-1-only scan so the 67k never-scanned
+                # drains fast; proven/active companies still get full depth.
+                connector.shallow = (
+                    company.last_success_at is None
+                    or company.priority_score < 20
+                )
                 conn_result = await connector.fetch_jobs(company_id, company.ats_identifier)
 
             # Log fetch

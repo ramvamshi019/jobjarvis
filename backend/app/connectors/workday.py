@@ -55,7 +55,14 @@ class WorkdayConnector(BaseConnector):
             total = data.get("total", len(raw_jobs))
 
             # ── Paginate remaining pages in parallel ──────────────────────────
-            remaining_offsets = list(range(PAGE_SIZE, min(total, PAGE_SIZE * MAX_PAGES), PAGE_SIZE))
+            # Shallow first-pass: skip pagination entirely (page 0 only) so a
+            # never-/rarely-scanned company costs 1 request instead of up to
+            # 50. It still gets ingested + marked scanned; deep pagination
+            # comes on its next (full) scan once it's proven active.
+            if self.shallow:
+                remaining_offsets = []
+            else:
+                remaining_offsets = list(range(PAGE_SIZE, min(total, PAGE_SIZE * MAX_PAGES), PAGE_SIZE))
 
             if remaining_offsets:
                 sem = asyncio.Semaphore(CONCURRENCY)
