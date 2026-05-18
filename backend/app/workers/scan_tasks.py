@@ -409,8 +409,17 @@ async def _scan_company_async(company_id: int) -> dict:
                 # ~70k tier3/tier4 bulk) gets the ~10-50x cheaper page-1 scan;
                 # if one starts posting real tech jobs it gets promoted to
                 # >=60 and graduates to full-depth automatically.
-                connector.shallow = company.priority_score < 60
+                shallow = company.priority_score < 60
+                connector.shallow = shallow
                 conn_result = await connector.fetch_jobs(company_id, company.ats_identifier)
+                # connector.shallow only caps Workday's pagination. For every
+                # other ATS a big company returns ALL its jobs in one response
+                # — processing 1000s of them (normalize/classify/dedup/DB)
+                # blows the task time limit. Cap processed jobs per company on
+                # a shallow scan so the ~70k bulk stays cheap regardless of
+                # ATS; proven tech companies (>=60) still process everything.
+                if shallow and conn_result.jobs and len(conn_result.jobs) > 25:
+                    conn_result.jobs = conn_result.jobs[:25]
 
             # Log fetch
             await log_fetch(
