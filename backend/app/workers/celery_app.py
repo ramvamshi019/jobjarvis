@@ -134,7 +134,11 @@ celery_app.conf.update(
     task_acks_late=True,
     worker_prefetch_multiplier=1,
     task_routes={
-        "app.workers.scan_tasks.*":             {"queue": "scans"},
+        # Company scans get their OWN queue so a dedicated worker drains them
+        # without competing with jobspy / discovery firehoses (which stay on
+        # "scans"). This is the throughput fix — see celery_worker_scans in
+        # deploy/docker-compose.prod.yml.
+        "app.workers.scan_tasks.*":             {"queue": "company_scans"},
         "app.workers.ai_tasks.*":               {"queue": "ai"},
         "app.workers.discovery_tasks.*":        {"queue": "scans"},
         "app.workers.healer_tasks.*":           {"queue": "scans"},
