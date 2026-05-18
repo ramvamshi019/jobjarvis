@@ -190,33 +190,39 @@ async def search_jobs(
     # to title keywords so the existing corpus is covered without a backfill.
     if experience:
         e = experience.strip().lower()
+        ENTRY_KW = [
+            "intern", "internship", "junior", "jr.", "jr ", "new grad",
+            "new-grad", "newgrad", "recent grad", "early career",
+            "early-career", "early talent", "early professional",
+            "entry level", "entry-level", "associate", "graduate",
+            "trainee", "apprentice", "co-op", "co op", "coop", "campus",
+            "rotational",
+        ]
+        SENIOR_KW = [
+            "senior", "sr.", "sr ", "staff ", "principal", "lead ",
+            "architect", "director", "head of", "vice president", "vp ",
+            "distinguished", "fellow", "manager", "expert",
+        ]
+        entry_clause = or_(
+            Job.experience_level.in_(["entry", "intern"]),
+            *[Job.title.ilike(f"%{k}%") for k in ENTRY_KW],
+        )
+        senior_clause = or_(
+            Job.experience_level.in_(["senior", "staff", "lead"]),
+            *[Job.title.ilike(f"%{k}%") for k in SENIOR_KW],
+        )
         if e == "entry":
-            filters.append(
-                or_(
-                    Job.experience_level.in_(["entry", "intern"]),
-                    Job.title.ilike("%intern%"),
-                    Job.title.ilike("%junior%"),
-                    Job.title.ilike("%jr.%"),
-                    Job.title.ilike("%new grad%"),
-                    Job.title.ilike("%new-grad%"),
-                    Job.title.ilike("%recent grad%"),
-                    Job.title.ilike("%early career%"),
-                    Job.title.ilike("%entry level%"),
-                    Job.title.ilike("%entry-level%"),
-                    Job.title.ilike("%associate%"),
-                    Job.title.ilike("%graduate%"),
-                )
-            )
+            filters.append(entry_clause)
         elif e == "senior":
+            filters.append(senior_clause)
+        elif e == "mid":
+            # Mid = the broad middle: explicitly tagged "mid", OR a role that
+            # is neither clearly entry nor clearly senior (the large pool of
+            # un-tagged "Software Engineer"-style titles).
             filters.append(
                 or_(
-                    Job.experience_level.in_(["senior", "staff", "lead"]),
-                    Job.title.ilike("%senior%"),
-                    Job.title.ilike("%sr.%"),
-                    Job.title.ilike("%sr %"),
-                    Job.title.ilike("%staff %"),
-                    Job.title.ilike("%principal%"),
-                    Job.title.ilike("%lead %"),
+                    Job.experience_level == "mid",
+                    and_(~entry_clause, ~senior_clause),
                 )
             )
         else:
