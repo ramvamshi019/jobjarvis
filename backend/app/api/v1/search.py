@@ -184,8 +184,43 @@ async def search_jobs(
                 )
 
     # ── Experience filter ──────────────────────────────────────────────────
+    # experience_level is sparse/inconsistent (interns land in their own
+    # bucket; un-tagged early-career roles default to mid/NULL). An exact
+    # match starves the chips. So treat each chip as a bucket and fall back
+    # to title keywords so the existing corpus is covered without a backfill.
     if experience:
-        filters.append(Job.experience_level == experience.lower())
+        e = experience.strip().lower()
+        if e == "entry":
+            filters.append(
+                or_(
+                    Job.experience_level.in_(["entry", "intern"]),
+                    Job.title.ilike("%intern%"),
+                    Job.title.ilike("%junior%"),
+                    Job.title.ilike("%jr.%"),
+                    Job.title.ilike("%new grad%"),
+                    Job.title.ilike("%new-grad%"),
+                    Job.title.ilike("%recent grad%"),
+                    Job.title.ilike("%early career%"),
+                    Job.title.ilike("%entry level%"),
+                    Job.title.ilike("%entry-level%"),
+                    Job.title.ilike("%associate%"),
+                    Job.title.ilike("%graduate%"),
+                )
+            )
+        elif e == "senior":
+            filters.append(
+                or_(
+                    Job.experience_level.in_(["senior", "staff", "lead"]),
+                    Job.title.ilike("%senior%"),
+                    Job.title.ilike("%sr.%"),
+                    Job.title.ilike("%sr %"),
+                    Job.title.ilike("%staff %"),
+                    Job.title.ilike("%principal%"),
+                    Job.title.ilike("%lead %"),
+                )
+            )
+        else:
+            filters.append(Job.experience_level == e)
 
     # ── Remote type filter ─────────────────────────────────────────────────
     if remote:
