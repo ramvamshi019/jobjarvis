@@ -16,7 +16,13 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 COPY requirements.txt .
+# Install the CPU-only torch FIRST (this VM has no GPU). The default torch
+# wheel bundles ~3-5GB of NVIDIA CUDA/cuDNN libs that are pure dead weight
+# here — they bloated the image, blew out the disk on every build, and
+# tripled build time. Pre-installing CPU torch means sentence-transformers
+# sees torch already satisfied and won't pull the CUDA wheel.
 RUN pip install --upgrade pip && \
+    pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir -r requirements.txt && \
     # python-jobspy is installed --no-deps to bypass its strict NUMPY pin
     # which conflicts with sentence-transformers / spacy / pandas.  Its
