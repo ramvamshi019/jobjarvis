@@ -128,11 +128,14 @@ services:
       target: runtime
     container_name: jj_celery_beat
     restart: always
-    command: celery -A app.workers.celery_app beat --loglevel=info --schedule=/app/celerybeat-schedule
+    command: celery -A app.workers.celery_app beat --loglevel=info --schedule=/app/beatstate/celerybeat-schedule
     environment:
       <<: *backend-env
     volumes:
-      - celerybeat_data:/app
+      # Persist ONLY the beat schedule state, not all of /app. Mounting the
+      # named volume over /app shadowed the freshly-built code, so every
+      # rebuild silently kept running the old scheduler/code.
+      - celerybeat_data:/app/beatstate
       - backend_data:/app/data
       - ./logs/beat:/app/logs
     depends_on:
